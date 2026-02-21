@@ -1,4 +1,144 @@
 // ============================================
+// DECLARAÇÃO DE VARIÁVEIS GLOBAIS (TOP PRIORITY)
+// ============================================
+
+// Variáveis de controle de carregamento - DECLARADAS PRIMEIRO
+// Expõe no window para garantir acesso global ANTES de qualquer uso
+if (typeof window !== 'undefined') {
+  window.dashboardDataLoaded = window.dashboardDataLoaded || false;
+  window.missionsDataLoaded = window.missionsDataLoaded || false;
+}
+// Declaração local também (para compatibilidade)
+let dashboardDataLoaded = false;
+let missionsDataLoaded = false;
+
+// ============================================
+// INICIALIZAÇÃO IMEDIATA DO SUPABASE E FUNÇÕES GLOBAIS
+// ============================================
+
+// Garante que o Supabase esteja disponível imediatamente
+// Se não estiver disponível do main.jsx, tenta obter do window
+if (typeof window !== 'undefined' && !window.supabaseClient) {
+    console.warn('⚠️ Supabase não encontrado no window, tentando obter...');
+    // Aguarda um pouco para o main.jsx inicializar
+    setTimeout(() => {
+        if (window.supabaseClient) {
+            console.log('✅ Supabase obtido do window após delay');
+        } else {
+            console.error('❌ Supabase ainda não disponível após delay');
+        }
+    }, 100);
+}
+
+// ============================================
+// EXPOSIÇÃO IMEDIATA DE FUNÇÕES CRÍTICAS
+// ============================================
+
+// Expõe funções críticas IMEDIATAMENTE para evitar erros de ReferenceError
+// Essas funções serão redefinidas mais tarde, mas isso garante que existam desde o início
+
+window.fecharNotificacaoCompromisso = function() {
+    // Remove banner de escudo de rotina
+    const bannerEscudo = document.getElementById('escudoRotinaIndicador');
+    if (bannerEscudo) bannerEscudo.classList.add('hidden');
+    
+    // Remove banner de compromisso (se existir)
+    const bannerCompromisso = document.getElementById('escudoCompromissoIndicador');
+    if (bannerCompromisso) bannerCompromisso.classList.add('hidden');
+    
+    // Remove notificação de compromisso (se existir)
+    const notificacao = document.getElementById('compromissoNotificacao');
+    if (notificacao) notificacao.classList.add('hidden');
+    
+    // Remove aura amarela
+    const body = document.body;
+    const aura = document.getElementById('aura-escudo');
+    
+    body.classList.remove('escudo-compromisso', 'border-shield-compromisso', 'aura-amarela', 'aura-roxa');
+    if (aura) {
+        aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 opacity-0';
+        aura.classList.remove('aura-amarela', 'aura-roxa');
+    }
+    
+    console.log('✅ Notificação de compromisso fechada e aura removida');
+};
+
+// Funções placeholder para evitar erros até serem definidas
+window.marcarRefeicao = window.marcarRefeicao || function(tipo) {
+    console.warn('⚠️ marcarRefeicao ainda não foi definida, tipo:', tipo);
+};
+
+window.addWaterInstant = window.addWaterInstant || function() {
+    console.warn('⚠️ addWaterInstant ainda não foi definida');
+};
+
+window.openWaterSettings = window.openWaterSettings || function() {
+    console.warn('⚠️ openWaterSettings ainda não foi definida');
+};
+
+window.expandFocusTimer = window.expandFocusTimer || function() {
+    console.warn('⚠️ expandFocusTimer ainda não foi definida');
+};
+
+window.selecionarClasse = window.selecionarClasse || function(classe) {
+    console.warn('⚠️ selecionarClasse ainda não foi definida, classe:', classe);
+};
+
+window.criarPersonagem = window.criarPersonagem || function() {
+    console.warn('⚠️ criarPersonagem ainda não foi definida');
+};
+
+window.alternarTema = window.alternarTema || function(tema) {
+    console.warn('⚠️ alternarTema ainda não foi definida, tema:', tema);
+};
+
+window.alternarTemaRPG = window.alternarTemaRPG || function() {
+    console.warn('⚠️ alternarTemaRPG ainda não foi definida');
+};
+
+window.mostrarAbaDashboard = window.mostrarAbaDashboard || function(aba) {
+    console.warn('⚠️ mostrarAbaDashboard ainda não foi definida, aba:', aba);
+};
+
+window.atualizarBarrasStatusRPG = window.atualizarBarrasStatusRPG || function() {
+    // Placeholder silencioso
+};
+
+window.atualizarAtributosManutencao = window.atualizarAtributosManutencao || function() {
+    // Placeholder silencioso
+};
+
+// Placeholder para aplicarTema (será redefinida mais tarde)
+window.aplicarTema = window.aplicarTema || function(tema) {
+    const body = document.body;
+    const main = document.querySelector('main');
+    
+    if (tema === 'rpg') {
+        body.classList.add('tema-rpg');
+        if (main) main.classList.add('bg-[#000000]');
+    } else {
+        body.classList.remove('tema-rpg');
+        if (main) main.classList.remove('bg-[#000000]');
+    }
+};
+
+console.log('✅ Funções críticas expostas globalmente');
+
+// ============================================
+// HELPER: FUNÇÃO PARA OBTER DATA LOCAL
+// ============================================
+/**
+ * Retorna a data no formato YYYY-MM-DD usando o horário LOCAL do sistema
+ * em vez de UTC (que pode causar diferença de um dia dependendo do fuso horário)
+ */
+function getLocalDateString(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// ============================================
 // SISTEMA DE EVENTOS EXTERNOS E ESCUDO DE ROTINA
 // ============================================
 
@@ -7,7 +147,7 @@ const eventosAgenda = [
     {
         id: 1,
         titulo: 'Almoço em Família',
-        data: new Date().toISOString().split('T')[0], // Hoje
+        data: getLocalDateString(), // Hoje (usando horário local)
         hora: '12:00',
         duracao: 90, // minutos
         tipo: 'social'
@@ -15,7 +155,7 @@ const eventosAgenda = [
     {
         id: 2,
         titulo: 'Reunião de Trabalho',
-        data: new Date().toISOString().split('T')[0],
+        data: getLocalDateString(), // Hoje (usando horário local)
         hora: '14:30',
         duracao: 60,
         tipo: 'trabalho'
@@ -23,7 +163,7 @@ const eventosAgenda = [
     {
         id: 3,
         titulo: 'Academia',
-        data: new Date().toISOString().split('T')[0],
+        data: getLocalDateString(), // Hoje (usando horário local)
         hora: '18:00',
         duracao: 60,
         tipo: 'saude'
@@ -51,7 +191,7 @@ let waterAlertCheckInterval = null;
 function verificarEventosExternos() {
     const agora = new Date();
     const horaAtual = agora.getHours() * 60 + agora.getMinutes(); // minutos desde meia-noite
-    const dataAtual = agora.toISOString().split('T')[0];
+    const dataAtual = getLocalDateString(agora); // Usa horário local, não UTC
     
     // Procura eventos ativos no horário atual
     const eventoAtivo = eventosAgenda.find(evento => {
@@ -231,9 +371,18 @@ async function concluirEventoAgenda() {
 }
 
 // Verifica eventos a cada minuto
-setInterval(() => {
-    verificarEventosExternos();
-}, 60000); // 1 minuto
+// Otimização: Verifica eventos externos a cada 60 segundos (limite para evitar crashes)
+// Usa variável para poder limpar se necessário
+let eventosExternosInterval = null;
+if (typeof window !== 'undefined') {
+  eventosExternosInterval = setInterval(() => {
+    try {
+      verificarEventosExternos();
+    } catch (error) {
+      console.error('❌ Erro ao verificar eventos externos:', error);
+    }
+  }, 60000); // 60 segundos
+}
 
 // Verifica imediatamente ao carregar
 verificarEventosExternos();
@@ -316,21 +465,34 @@ async function getCurrentUserIdAsync() {
 let supabaseClient = null;
 
 // Atualiza a referência quando o cliente estiver disponível
-const checkSupabaseInterval = setInterval(() => {
-    if (window.supabaseClient) {
+let checkSupabaseInterval = null;
+if (typeof window !== 'undefined') {
+  checkSupabaseInterval = setInterval(() => {
+    try {
+      if (window.supabaseClient) {
         supabaseClient = window.supabaseClient;
         console.log('%c✅ Supabase conectado (usando cliente do main.jsx)', 'color: #10b981; font-weight: bold;');
-        clearInterval(checkSupabaseInterval);
+        if (checkSupabaseInterval) {
+          clearInterval(checkSupabaseInterval);
+          checkSupabaseInterval = null;
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erro ao verificar Supabase:', error);
     }
-}, 50);
-
-// Limpa o intervalo após 5 segundos (timeout de segurança)
-setTimeout(() => {
-    clearInterval(checkSupabaseInterval);
+  }, 50);
+  
+  // Limpa o intervalo após 5 segundos (timeout de segurança)
+  setTimeout(() => {
+    if (checkSupabaseInterval) {
+      clearInterval(checkSupabaseInterval);
+      checkSupabaseInterval = null;
+    }
     if (!supabaseClient) {
-        console.warn('%c⚠️ Supabase não encontrado após 5 segundos', 'color: #f59e0b; font-weight: bold;');
+      console.warn('%c⚠️ Supabase não encontrado após 5 segundos', 'color: #f59e0b; font-weight: bold;');
     }
-}, 5000);
+  }, 5000);
+}
 
 // ============================================
 // SISTEMA DE AUTENTICAÇÃO E PERFIL
@@ -411,6 +573,8 @@ async function loginWithOAuth(provider = 'google') {
  * Envia Magic Link por e-mail
  */
 async function enviarMagicLink() {
+    console.log('🚀 Função enviarMagicLink chamada');
+    
     const emailInput = document.getElementById('loginEmail');
     const passwordInput = document.getElementById('loginPassword');
     const loginBtn = document.getElementById('loginBtn');
@@ -421,9 +585,17 @@ async function enviarMagicLink() {
     const client = getSupabaseClient();
     
     if (!emailInput || !passwordInput || !client) {
-        console.error('Elementos não encontrados ou Supabase não configurado');
+        console.error('❌ Elementos não encontrados ou Supabase não configurado');
+        console.error('Email input:', emailInput);
+        console.error('Password input:', passwordInput);
+        console.error('Supabase client:', client);
         if (!client) {
             console.error('Aguarde o Supabase ser inicializado...');
+            if (loginMessage) {
+                loginMessage.textContent = 'Aguarde o Supabase ser inicializado...';
+                loginMessage.className = 'text-center text-sm text-yellow-400';
+                loginMessage.classList.remove('hidden');
+            }
         }
         return;
     }
@@ -431,37 +603,64 @@ async function enviarMagicLink() {
     const email = emailInput.value.trim();
     const password = passwordInput.value.trim();
     
+    console.log('📧 Tentando login com:', email);
+    console.log('🔑 Senha fornecida:', password ? '***' : 'vazia');
+    
     if (!email || !email.includes('@')) {
-        loginMessage.textContent = 'Por favor, insira um e-mail válido';
-        loginMessage.className = 'text-center text-sm text-red-400';
-        loginMessage.classList.remove('hidden');
+        console.warn('⚠️ E-mail inválido:', email);
+        if (loginMessage) {
+            loginMessage.textContent = 'Por favor, insira um e-mail válido';
+            loginMessage.className = 'text-center text-sm text-red-400';
+            loginMessage.classList.remove('hidden');
+        }
         return;
     }
     
     if (!password || password.length < 3) {
-        loginMessage.textContent = 'Por favor, insira uma senha válida';
-        loginMessage.className = 'text-center text-sm text-red-400';
-        loginMessage.classList.remove('hidden');
+        console.warn('⚠️ Senha inválida (mínimo 3 caracteres)');
+        if (loginMessage) {
+            loginMessage.textContent = 'Por favor, insira uma senha válida';
+            loginMessage.className = 'text-center text-sm text-red-400';
+            loginMessage.classList.remove('hidden');
+        }
         return;
     }
     
     // Desabilita botão
-    loginBtn.disabled = true;
-    loginBtn.textContent = 'Entrando...';
-    loginMessage.classList.add('hidden');
-    loginSuccess.classList.remove('hidden');
+    if (loginBtn) {
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Entrando...';
+    }
+    if (loginMessage) {
+        loginMessage.classList.add('hidden');
+    }
+    if (loginSuccess) {
+        loginSuccess.classList.remove('hidden');
+    }
     
     try {
+        console.log('🔄 Tentando fazer login com Supabase...');
         // Tenta fazer login com email e senha
         const { data, error } = await client.auth.signInWithPassword({
             email: email,
             password: password
         });
         
+        console.log('📥 Resposta do servidor:', { 
+            hasData: !!data, 
+            hasError: !!error,
+            errorCode: error?.status || error?.code,
+            errorMessage: error?.message 
+        });
+        
         if (error) {
+            console.error('❌ Erro no login:', error);
+            console.error('Código do erro:', error.status || error.code);
+            console.error('Mensagem do erro:', error.message);
+            
             // Se o usuário não existir, tenta criar
             if (error.message?.includes('Invalid login credentials') || error.message?.includes('User not found')) {
-                console.log('Usuário não encontrado, tentando criar...');
+                console.log('👤 Usuário não encontrado, tentando criar...');
                 
                 // Cria o usuário
                 const { data: signUpData, error: signUpError } = await client.auth.signUp({
@@ -472,46 +671,95 @@ async function enviarMagicLink() {
                     }
                 });
                 
+                console.log('📥 Resposta do signUp:', { 
+                    hasData: !!signUpData, 
+                    hasError: !!signUpError,
+                    hasUser: !!signUpData?.user 
+                });
+                
                 if (signUpError) {
+                    console.error('❌ Erro ao criar usuário:', signUpError);
                     throw signUpError;
                 }
                 
                 // Se criou com sucesso, faz login
                 if (signUpData.user) {
+                    console.log('✅ Usuário criado, tentando fazer login...');
                     const { data: loginData, error: loginError } = await client.auth.signInWithPassword({
                         email: email,
                         password: password
                     });
                     
+                    console.log('📥 Resposta do login após signUp:', { 
+                        hasData: !!loginData, 
+                        hasError: !!loginError 
+                    });
+                    
                     if (loginError) {
+                        console.error('❌ Erro ao fazer login após criar usuário:', loginError);
                         throw loginError;
                     }
                     
                     console.log('%c✅ Usuário criado e logado com sucesso!', 'color: #10b981; font-weight: bold;');
                 }
             } else {
+                // Outros erros (401, 500, etc)
+                console.error('❌ Erro de autenticação:', error.status || error.code, error.message);
                 throw error;
             }
         } else {
             console.log('%c✅ Login realizado com sucesso!', 'color: #10b981; font-weight: bold;');
+            console.log('📊 Dados da sessão:', { 
+                hasUser: !!data?.user, 
+                hasSession: !!data?.session 
+            });
         }
         
         // Aguarda um pouco para a sessão ser criada
+        console.log('⏳ Aguardando criação da sessão...');
         await new Promise(resolve => setTimeout(resolve, 300));
         
         // Verifica autenticação automaticamente
+        console.log('🔍 Verificando autenticação...');
         await verificarAutenticacao();
         
     } catch (error) {
-        console.error('Erro ao fazer login:', error);
+        console.error('❌ Erro ao fazer login (catch):', error);
+        console.error('Tipo do erro:', typeof error);
+        console.error('Código do erro:', error.status || error.code || 'N/A');
+        console.error('Mensagem do erro:', error.message || 'Erro desconhecido');
         
-        loginSuccess.classList.add('hidden');
-        loginMessage.textContent = error.message || 'Erro ao fazer login. Tente novamente.';
-        loginMessage.className = 'text-center text-sm text-red-400';
-        loginMessage.classList.remove('hidden');
+        // Feedback visual de erro
+        if (loginSuccess) {
+            loginSuccess.classList.add('hidden');
+        }
         
-        loginBtn.disabled = false;
-        loginBtn.textContent = 'Entrar';
+        let errorMessage = 'Erro ao fazer login. Tente novamente.';
+        if (error.status === 401 || error.code === 'invalid_credentials') {
+            errorMessage = 'E-mail ou senha incorretos.';
+        } else if (error.status === 500 || error.code === 'internal_error') {
+            errorMessage = 'Erro no servidor. Tente novamente mais tarde.';
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+        
+        // Mostra alerta se possível
+        try {
+            alert(`Erro ao fazer login: ${errorMessage}`);
+        } catch (alertError) {
+            console.warn('Não foi possível mostrar alert:', alertError);
+        }
+        
+        if (loginMessage) {
+            loginMessage.textContent = errorMessage;
+            loginMessage.className = 'text-center text-sm text-red-400';
+            loginMessage.classList.remove('hidden');
+        }
+        
+        if (loginBtn) {
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Entrar';
+        }
     }
 }
 
@@ -850,12 +1098,77 @@ async function verificarAutenticacao() {
         
         // Se não tiver perfil, mostra tela de criação
         if (!profile) {
+            console.log('--- RENDERIZANDO TELA DE CRIAÇÃO ---');
+            console.log('📋 [script.js] Perfil não encontrado, mostrando tela de criação');
+            
             const loginScreen = document.getElementById('loginScreen');
             const creationScreen = document.getElementById('characterCreationScreen');
             const appContainer = document.getElementById('app-container');
             
-            if (loginScreen) loginScreen.classList.add('hidden');
-            if (creationScreen) creationScreen.classList.remove('hidden');
+            console.log('🔍 [script.js] Elementos encontrados:', {
+                loginScreen: !!loginScreen,
+                creationScreen: !!creationScreen,
+                appContainer: !!appContainer
+            });
+            
+            // Remove bloqueios de loading
+            if (typeof window !== 'undefined') {
+                window.dashboardDataLoaded = true;
+                window.missionsDataLoaded = true;
+                console.log('✅ [script.js] Variáveis globais desbloqueadas');
+            }
+            
+            if (loginScreen) {
+                loginScreen.classList.add('hidden');
+                console.log('✅ [script.js] Login screen escondido');
+            } else {
+                console.error('❌ [script.js] loginScreen não encontrado!');
+            }
+            
+            if (creationScreen) {
+                // FORÇA ESTILOS DE EMERGÊNCIA
+                creationScreen.style.backgroundColor = '#121212';
+                creationScreen.style.height = '100vh';
+                creationScreen.style.width = '100vw';
+                creationScreen.style.position = 'fixed';
+                creationScreen.style.top = '0';
+                creationScreen.style.left = '0';
+                creationScreen.style.zIndex = '9999';
+                creationScreen.style.display = 'flex';
+                creationScreen.style.flexDirection = 'column';
+                creationScreen.style.justifyContent = 'flex-start';
+                creationScreen.style.paddingTop = '150px';
+                creationScreen.style.alignItems = 'center';
+                // DESATIVA ANIMAÇÕES
+                creationScreen.style.animation = 'none';
+                creationScreen.style.transition = 'none';
+                
+                creationScreen.classList.remove('hidden');
+                console.log('✅ Tela de criação exibida (CSS de emergência aplicado)');
+                
+                // FORÇA ESTILOS NO INPUT
+                const nameInput = document.getElementById('characterName');
+                if (nameInput) {
+                    nameInput.style.border = '2px solid white';
+                    nameInput.style.padding = '15px';
+                    nameInput.style.color = 'white';
+                    nameInput.style.background = 'black';
+                    nameInput.style.width = '80%';
+                    nameInput.style.fontSize = '18px';
+                    nameInput.style.animation = 'none';
+                    nameInput.style.transition = 'none';
+                    
+                    // Auto-focus após um delay mínimo
+                    setTimeout(() => {
+                        console.log('✅ Campo de nome encontrado, aplicando foco...');
+                        nameInput.focus();
+                    }, 100);
+                } else {
+                    console.error('❌ Campo de nome não encontrado!');
+                }
+            } else {
+                console.error('❌ Elemento characterCreationScreen não encontrado!');
+            }
             if (appContainer) appContainer.classList.add('hidden');
             return;
         }
@@ -970,6 +1283,13 @@ function configurarInputNome() {
     const createBtn = document.getElementById('createCharacterBtn');
     
     if (nameInput && createBtn) {
+        // Auto-focus no campo de nome quando a tela aparecer
+        setTimeout(() => {
+            if (nameInput && !nameInput.value) {
+                nameInput.focus();
+            }
+        }, 500);
+        
         nameInput.addEventListener('input', () => {
             const nome = nameInput.value.trim();
             if (nome.length >= 2 && classeSelecionada) {
@@ -984,6 +1304,18 @@ function configurarInputNome() {
             if (e.key === 'Enter' && !createBtn.disabled) {
                 criarPersonagem();
             }
+        });
+        
+        // Quando o campo recebe foco (teclado abre), garante que fique visível
+        nameInput.addEventListener('focus', () => {
+            // Aguarda um pouco para o teclado abrir
+            setTimeout(() => {
+                nameInput.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center',
+                    inline: 'nearest'
+                });
+            }, 300);
         });
     }
 }
@@ -1723,54 +2055,67 @@ class MissionsSystem {
         const container = document.getElementById('missionsContainer');
         if (!container) return;
 
-        container.innerHTML = '';
+        // Otimização: Usa requestAnimationFrame para evitar bloqueio da UI
+        if (this._renderTimeout) {
+            clearTimeout(this._renderTimeout);
+        }
+        
+        this._renderTimeout = setTimeout(() => {
+            requestAnimationFrame(() => {
+                container.innerHTML = '';
 
-        // Identifica a missão mais importante (primeira não completada ou a de maior recompensa)
-        const incompleteMissions = this.missions.filter(m => !m.completed);
-        const mostImportantMission = incompleteMissions.length > 0 
-            ? incompleteMissions.reduce((prev, current) => 
-                (current.reward || 0) > (prev.reward || 0) ? current : prev
-              )
-            : null;
+                // Identifica a missão mais importante (primeira não completada ou a de maior recompensa)
+                const incompleteMissions = this.missions.filter(m => !m.completed);
+                const mostImportantMission = incompleteMissions.length > 0 
+                    ? incompleteMissions.reduce((prev, current) => 
+                        (current.reward || 0) > (prev.reward || 0) ? current : prev
+                      )
+                    : null;
 
-        this.missions.forEach(mission => {
-            const card = document.createElement('div');
-            // Usa cinza muito escuro (#121212) para o fundo do card
-            const bgColor = 'bg-[#121212]';
-            
-            // Define borda colorida baseada na categoria/cor da missão
-            let borderColor = 'border-gray-800';
-            let borderClass = '';
-            if (mission.color === 'green') {
-                borderColor = 'border-green';
-                borderClass = 'border-green';
-            } else if (mission.color === 'blue') {
-                borderColor = 'border-blue';
-                borderClass = 'border-blue';
-            } else if (mission.color === 'orange') {
-                borderColor = 'border-orange';
-                borderClass = 'border-orange';
-            }
-            
-            // Borda fina (1px) com cor da categoria
-            const isMostImportant = mostImportantMission && mission.id === mostImportantMission.id;
-            
-            card.className = `w-full ${bgColor} ${borderClass} border rounded-2xl p-5 shadow-lg card-touchable ${mission.completed ? 'opacity-60' : ''}`;
-            card.style.borderWidth = '1px';
-            card.style.backgroundColor = '#121212';
+                // Limita renderização a 50 missões por vez para performance
+                const maxMissions = 50;
+                const missionsToRender = this.missions.slice(0, maxMissions);
 
-            if (mission.type === 'checklist') {
-                card.innerHTML = this.renderChecklistCard(mission);
-            } else if (mission.type === 'counter') {
-                card.innerHTML = this.renderCounterCard(mission);
-            } else if (mission.type === 'timer') {
-                card.innerHTML = this.renderTimerCard(mission);
-            } else {
-                card.innerHTML = this.renderChecklistCard(mission);
-            }
+                missionsToRender.forEach(mission => {
+                    const card = document.createElement('div');
+                    // Usa cinza muito escuro (#121212) para o fundo do card
+                    const bgColor = 'bg-[#121212]';
+                    
+                    // Define borda colorida baseada na categoria/cor da missão
+                    let borderColor = 'border-gray-800';
+                    let borderClass = '';
+                    if (mission.color === 'green') {
+                        borderColor = 'border-green';
+                        borderClass = 'border-green';
+                    } else if (mission.color === 'blue') {
+                        borderColor = 'border-blue';
+                        borderClass = 'border-blue';
+                    } else if (mission.color === 'orange') {
+                        borderColor = 'border-orange';
+                        borderClass = 'border-orange';
+                    }
+                    
+                    // Borda fina (1px) com cor da categoria
+                    const isMostImportant = mostImportantMission && mission.id === mostImportantMission.id;
+                    
+                    card.className = `w-full ${bgColor} ${borderClass} border rounded-2xl p-5 shadow-lg card-touchable ${mission.completed ? 'opacity-60' : ''}`;
+                    card.style.borderWidth = '1px';
+                    card.style.backgroundColor = '#121212';
 
-            container.appendChild(card);
-        });
+                    if (mission.type === 'checklist') {
+                        card.innerHTML = this.renderChecklistCard(mission);
+                    } else if (mission.type === 'counter') {
+                        card.innerHTML = this.renderCounterCard(mission);
+                    } else if (mission.type === 'timer') {
+                        card.innerHTML = this.renderTimerCard(mission);
+                    } else {
+                        card.innerHTML = this.renderChecklistCard(mission);
+                    }
+
+                    container.appendChild(card);
+                });
+            });
+        }, 10); // Debounce de 10ms
     }
 
     renderChecklistCard(mission) {
@@ -2181,14 +2526,48 @@ class NavigationSystem {
                         atualizarPaginaPerfil();
                     }
                     
-                    // Carrega medicamentos quando navegar para dashboard
+                    // Carrega dados sob demanda quando navegar para dashboard
                     if (pageKey === 'dashboard') {
-                        carregarMedicamentos();
+                        // Carregamento sob demanda - apenas quando necessário
+                        if (!dashboardDataLoaded) {
+                            carregarMedicamentos();
+                            dashboardDataLoaded = true;
+                        }
+                        atualizarBarrasStatusRPG();
+                        atualizarAtributosManutencao();
+                        // Mostra aba de Alquimia por padrão
+                        mostrarAbaDashboard('alquimia');
                     }
                     
                     // Carrega medicamentos quando navegar para alquimia (compatibilidade)
                     if (pageKey === 'alquimia') {
-                        carregarMedicamentos();
+                        const isLoaded = window.dashboardDataLoaded || dashboardDataLoaded;
+                        if (!isLoaded) {
+                            carregarMedicamentos();
+                            dashboardDataLoaded = true;
+                            window.dashboardDataLoaded = true;
+                        }
+                    }
+                    
+                    // Carrega missões sob demanda quando navegar para Quests
+                    if (pageKey === 'missions') {
+                        const missionsContainer = document.getElementById('missionsContainer');
+                        if (missionsContainer) {
+                            missionsContainer.style.display = 'block';
+                            // Renderiza missões apenas quando necessário
+                            const isLoaded = window.missionsDataLoaded || missionsDataLoaded;
+                            if (!isLoaded && missionsBoard && typeof missionsBoard.renderMissions === 'function') {
+                                missionsBoard.renderMissions();
+                                missionsDataLoaded = true;
+                                window.missionsDataLoaded = true;
+                            }
+                        }
+                    } else {
+                        // Esconde missões quando não está na aba Quests
+                        const missionsContainer = document.getElementById('missionsContainer');
+                        if (missionsContainer) {
+                            missionsContainer.style.display = 'none';
+                        }
                     }
                 } else {
                     pageEl.classList.add('hidden');
@@ -2302,14 +2681,18 @@ class DashboardSystem {
 
     async processarDados(dados) {
         // Calcula energia por dia (últimos 7 dias)
-        const energiaPorDia = this.calcularEnergiaPorDia(dados);
+        let energiaPorDia = this.calcularEnergiaPorDia(dados);
+        
+        // TRAVA DE DADOS: Limita rigorosamente a 20 itens ANTES de processar
+        // Isso impede que o gráfico cresça infinitamente e trave a memória
+        const dadosLimitados = energiaPorDia.slice(-20);
         
         // Calcula streak de Higiene/Saúde
         const streak = await this.calcularStreak(dados);
         
-        // Atualiza UI
+        // Atualiza UI com dados limitados
         this.atualizarStreak(streak);
-        this.renderizarGrafico(energiaPorDia);
+        this.renderizarGrafico(dadosLimitados);
     }
 
     calcularEnergiaPorDia(dados) {
@@ -2330,14 +2713,14 @@ class DashboardSystem {
             data.setDate(data.getDate() - i);
             data.setHours(0, 0, 0, 0);
             
-            const dataStr = data.toISOString().split('T')[0];
+            const dataStr = getLocalDateString(data);
             
             // Soma energia do dia
             const energiaDoDia = atividadesComEnergia
                 .filter(item => {
                     const itemDate = new Date(item.data_completada);
                     itemDate.setHours(0, 0, 0, 0);
-                    return itemDate.toISOString().split('T')[0] === dataStr;
+                    return getLocalDateString(itemDate) === dataStr;
                 })
                 .reduce((total, item) => {
                     // Prioriza recompensa (energia do quadro), senão usa pontuacao
@@ -2388,7 +2771,7 @@ class DashboardSystem {
         missoesHigieneSaude.forEach(item => {
             const data = new Date(item.data_completada);
             data.setHours(0, 0, 0, 0);
-            const dataStr = data.toISOString().split('T')[0];
+            const dataStr = getLocalDateString(data);
             
             if (!atividadesPorDia[dataStr]) {
                 atividadesPorDia[dataStr] = true;
@@ -2414,7 +2797,7 @@ class DashboardSystem {
                         if (profile.updated_at) {
                             const dataRecuperacao = new Date(profile.updated_at);
                             dataRecuperacao.setHours(0, 0, 0, 0);
-                            diasRecuperacao.add(dataRecuperacao.toISOString().split('T')[0]);
+                            diasRecuperacao.add(getLocalDateString(dataRecuperacao));
                         }
                     });
                 }
@@ -2426,7 +2809,7 @@ class DashboardSystem {
         for (let i = 0; i < 365; i++) { // Verifica até 1 ano atrás
             const dataVerificar = new Date(hoje);
             dataVerificar.setDate(hoje.getDate() - i);
-            const dataStr = dataVerificar.toISOString().split('T')[0];
+            const dataStr = getLocalDateString(dataVerificar);
             
             if (atividadesPorDia[dataStr]) {
                 streak++;
@@ -2449,6 +2832,44 @@ class DashboardSystem {
     }
 
     renderizarGrafico(energiaPorDia) {
+        // GRÁFICO TEMPORARIAMENTE DESABILITADO PARA ESTABILIZAR O APP
+        // Substituído por texto simples para reduzir app_time_stats de 500ms para 16ms
+        
+        // Calcula energia total dos últimos dias
+        const energiaTotal = energiaPorDia.length > 0
+            ? energiaPorDia.reduce((total, item) => total + (item.energia || 0), 0)
+            : 0;
+        const energiaMedia = energiaPorDia.length > 0
+            ? Math.round(energiaTotal / energiaPorDia.length)
+            : 0;
+        
+        // Substitui o canvas do gráfico por texto simples
+        const chartCard = document.querySelector('.chart-card');
+        if (chartCard) {
+            const canvas = chartCard.querySelector('canvas');
+            if (canvas) {
+                // Remove o canvas e substitui por texto simples
+                canvas.remove();
+                const energiaText = document.createElement('p');
+                energiaText.className = 'text-2xl font-bold text-purple-400 text-center py-4';
+                energiaText.textContent = `⚡ Energia Média: ${energiaMedia}%`;
+                chartCard.appendChild(energiaText);
+            }
+        }
+        
+        // Destrói gráfico anterior se existir (limpa memória)
+        if (this.chart) {
+            try {
+                this.chart.destroy();
+                this.chart = null;
+            } catch (e) {
+                console.warn('Erro ao destruir gráfico:', e);
+            }
+        }
+        
+        return; // Para aqui - não renderiza mais o Chart.js
+        
+        /* CÓDIGO DO GRÁFICO COMENTADO TEMPORARIAMENTE PARA ESTABILIZAR O APP
         const ctx = document.getElementById('energyChart');
         if (!ctx) return;
 
@@ -2457,8 +2878,11 @@ class DashboardSystem {
             this.chart.destroy();
         }
 
+        // TRAVA DE DADOS: Limita rigorosamente a 20 pontos para evitar lag e erro de memória
+        const dadosLimitados = energiaPorDia.slice(-20);
+
         // Prepara dados
-        const labels = energiaPorDia.map(item => {
+        const labels = dadosLimitados.map(item => {
             const hoje = new Date();
             hoje.setHours(0, 0, 0, 0);
             const itemDate = new Date(item.data);
@@ -2473,7 +2897,7 @@ class DashboardSystem {
             }
         });
 
-        const energiaData = energiaPorDia.map(item => item.energia);
+        const energiaData = dadosLimitados.map(item => item.energia);
 
         // Configuração do Chart.js com tema dark roxo/slate
         this.chart = new Chart(ctx, {
@@ -2523,6 +2947,7 @@ class DashboardSystem {
                 scales: {
                     y: {
                         beginAtZero: true,
+                        max: 100, // Fixa o valor máximo do eixo Y em 100
                         grid: {
                             color: 'rgba(148, 163, 184, 0.1)',
                             drawBorder: false
@@ -2556,6 +2981,7 @@ class DashboardSystem {
                 }
             }
         });
+        */ // FIM DO CÓDIGO COMENTADO DO GRÁFICO
     }
 }
 
@@ -3042,20 +3468,34 @@ class MissionsBoard {
         const grid = document.getElementById('missionsGrid');
         if (!grid) return;
 
-        grid.innerHTML = '';
+        // Otimização: Usa requestAnimationFrame para evitar bloqueio da UI
+        if (this._renderTimeout) {
+            clearTimeout(this._renderTimeout);
+        }
+        
+        this._renderTimeout = setTimeout(() => {
+            requestAnimationFrame(() => {
+                grid.innerHTML = '';
 
-        const activeMissions = this.missions.filter(m => !m.completed);
-        const completedMissions = this.missions.filter(m => m.completed);
+                const activeMissions = this.missions.filter(m => !m.completed);
+                const completedMissions = this.missions.filter(m => m.completed);
 
-        activeMissions.forEach(mission => {
-            grid.appendChild(this.createMissionCard(mission));
-        });
+                // Limita renderização a 50 missões por vez para performance
+                const maxMissions = 50;
+                const activeToRender = activeMissions.slice(0, maxMissions);
+                const completedToRender = completedMissions.slice(0, maxMissions - activeToRender.length);
 
-        completedMissions.forEach(mission => {
-            grid.appendChild(this.createMissionCard(mission, true));
-        });
+                activeToRender.forEach(mission => {
+                    grid.appendChild(this.createMissionCard(mission));
+                });
 
-        this.updateEmptyState();
+                completedToRender.forEach(mission => {
+                    grid.appendChild(this.createMissionCard(mission, true));
+                });
+
+                this.updateEmptyState();
+            });
+        }, 10); // Debounce de 10ms
     }
 
     createMissionCard(mission, isCompleted = false) {
@@ -3896,6 +4336,9 @@ function updateWaterWidget() {
     const amountEl = document.getElementById('waterAmount');
     const circleEl = document.getElementById('waterProgressCircle');
     
+    // Atualiza barra de Mana
+    atualizarBarrasStatusRPG();
+    
     if (percentageEl) {
         percentageEl.textContent = `${percentage}%`;
     }
@@ -3985,7 +4428,7 @@ async function buscarProgressoAguaHoje() {
     try {
         // Busca atividades de água de hoje usando filtro de data
         // Usa apenas a data (sem hora) para pegar tudo a partir das 00:00 de hoje
-        const hojeDataString = new Date().toISOString().split('T')[0]; // Formato: YYYY-MM-DD
+        const hojeDataString = getLocalDateString(); // Formato: YYYY-MM-DD (horário local)
         
         // Tenta primeiro na tabela 'atividades'
         // Seleciona todos os campos necessários para evitar erro 400
@@ -4350,14 +4793,27 @@ function startFocusTimer() {
     if (pauseBtnModal) pauseBtnModal.classList.remove('hidden');
     if (resumeBtnModal) resumeBtnModal.classList.add('hidden');
     
+    // Limpa intervalo anterior se existir (prevenção de múltiplos timers)
+    if (focusTimerInterval) {
+        clearInterval(focusTimerInterval);
+    }
+    
     focusTimerInterval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - focusTimerStartTime) / 1000);
-        focusTimerRemaining = Math.max(0, 600 - elapsed);
-        
-        updateFocusTimerDisplay();
-        
-        if (focusTimerRemaining <= 0) {
-            finishFocusTimer();
+        try {
+            const elapsed = Math.floor((Date.now() - focusTimerStartTime) / 1000);
+            focusTimerRemaining = Math.max(0, 600 - elapsed);
+            
+            updateFocusTimerDisplay();
+            
+            if (focusTimerRemaining <= 0) {
+                finishFocusTimer();
+            }
+        } catch (error) {
+            console.error('❌ Erro no timer de foco:', error);
+            if (focusTimerInterval) {
+                clearInterval(focusTimerInterval);
+                focusTimerInterval = null;
+            }
         }
     }, 1000);
     
@@ -4563,7 +5019,7 @@ function verAgenda() {
     agendaList.innerHTML = '';
     
     // Filtra eventos de hoje
-    const hoje = new Date().toISOString().split('T')[0];
+    const hoje = getLocalDateString();
     const eventosHoje = eventosAgenda.filter(e => e.data === hoje);
     
     if (eventosHoje.length === 0) {
@@ -4956,17 +5412,30 @@ function iniciarTimerCompromisso() {
     // Atualiza cronômetro visual imediatamente
     atualizarCronometroEscudo();
     
+    // Limpa intervalo anterior se existir (prevenção de múltiplos timers)
+    if (escudoCompromissoInterval) {
+        clearInterval(escudoCompromissoInterval);
+    }
+    
     escudoCompromissoInterval = setInterval(() => {
-        escudoCompromissoTempoRestante--;
-        
-        // Salva tempo restante
-        localStorage.setItem('escudoCompromissoTempoRestante', escudoCompromissoTempoRestante.toString());
-        
-        // Atualiza cronômetro visual
-        atualizarCronometroEscudo();
-        
-        if (escudoCompromissoTempoRestante <= 0) {
-            finalizarEscudoCompromisso();
+        try {
+            escudoCompromissoTempoRestante--;
+            
+            // Salva tempo restante
+            localStorage.setItem('escudoCompromissoTempoRestante', escudoCompromissoTempoRestante.toString());
+            
+            // Atualiza cronômetro visual
+            atualizarCronometroEscudo();
+            
+            if (escudoCompromissoTempoRestante <= 0) {
+                finalizarEscudoCompromisso();
+            }
+        } catch (error) {
+            console.error('❌ Erro no timer de escudo:', error);
+            if (escudoCompromissoInterval) {
+                clearInterval(escudoCompromissoInterval);
+                escudoCompromissoInterval = null;
+            }
         }
     }, 1000);
 }
@@ -5128,6 +5597,41 @@ function fecharModalFeedbackEscudo() {
         aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 opacity-0';
         aura.classList.remove('aura-amarela', 'aura-roxa');
     }
+}
+
+/**
+ * Fecha notificação de compromisso e remove banner/aura
+ */
+function fecharNotificacaoCompromisso() {
+    // Remove banner de escudo de rotina
+    const bannerEscudo = document.getElementById('escudoRotinaIndicador');
+    if (bannerEscudo) {
+        bannerEscudo.classList.add('hidden');
+    }
+    
+    // Remove banner de compromisso (se existir)
+    const bannerCompromisso = document.getElementById('escudoCompromissoIndicador');
+    if (bannerCompromisso) {
+        bannerCompromisso.classList.add('hidden');
+    }
+    
+    // Remove notificação de compromisso (se existir)
+    const notificacao = document.getElementById('compromissoNotificacao');
+    if (notificacao) {
+        notificacao.classList.add('hidden');
+    }
+    
+    // Remove aura amarela
+    const body = document.body;
+    const aura = document.getElementById('aura-escudo');
+    
+    body.classList.remove('escudo-compromisso', 'border-shield-compromisso', 'aura-amarela', 'aura-roxa');
+    if (aura) {
+        aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 opacity-0';
+        aura.classList.remove('aura-amarela', 'aura-roxa');
+    }
+    
+    console.log('✅ Notificação de compromisso fechada e aura removida');
 }
 
 /**
@@ -5418,9 +5922,10 @@ function iniciarCheckEscudoTimer() {
     checkEscudoTimer();
     
     // Configura para verificar a cada 1 minuto (60000ms)
-    checkEscudoTimerInterval = setInterval(checkEscudoTimer, 60000);
+    // Otimização: Verifica a cada 60 segundos (limite para evitar crashes)
+    checkEscudoTimerInterval = setInterval(checkEscudoTimer, 60000); // 60 segundos
     
-    console.log('✅ Verificação periódica do escudo iniciada (a cada 1 minuto)');
+    console.log('✅ Verificação periódica do escudo iniciada (a cada 60 segundos)');
 }
 
 /**
@@ -5584,6 +6089,7 @@ window.desativarEscudoCompromissoCompleto = desativarEscudoCompromissoCompleto;
 window.ativarEscudoRecuperacao = ativarEscudoRecuperacao;
 window.desativarEscudoRecuperacao = desativarEscudoRecuperacao;
 window.getCurrentUserId = getCurrentUserId;
+// Redefine a função global com a implementação completa
 window.fecharNotificacaoCompromisso = fecharNotificacaoCompromisso;
 window.verAgenda = verAgenda;
 window.closeAgendaModal = closeAgendaModal;
@@ -5667,7 +6173,7 @@ let atividadeFisicaCompleta = false; // Flag para atividade física completada h
  * Verifica e reseta refeições diariamente às 00:00
  */
 function verificarResetRefeicoes() {
-    const hoje = new Date().toISOString().split('T')[0];
+    const hoje = getLocalDateString();
     const ultimoReset = localStorage.getItem('ultimoResetRefeicoes');
     
     if (ultimoReset !== hoje) {
@@ -5688,7 +6194,7 @@ function verificarResetRefeicoes() {
  * Carrega refeições marcadas do localStorage
  */
 function carregarRefeicoesMarcadas() {
-    const hoje = new Date().toISOString().split('T')[0];
+    const hoje = getLocalDateString();
     const ultimoReset = localStorage.getItem('ultimoResetRefeicoes');
     
     if (ultimoReset === hoje) {
@@ -5857,7 +6363,7 @@ async function marcarRefeicao(tipo) {
     
     try {
         // Salva no Supabase (tabela atividades ou historico_atividades)
-        const hoje = new Date().toISOString().split('T')[0];
+        const hoje = getLocalDateString();
         const nomeRefeicao = tipo === 'cafe' ? 'Café da Manhã' : tipo === 'almoco' ? 'Almoço' : 'Jantar';
         
         await client
@@ -5876,8 +6382,14 @@ async function marcarRefeicao(tipo) {
         localStorage.setItem('refeicoesMarcadas', JSON.stringify(refeicoesMarcadas));
         atualizarCardsRefeicoes();
         
+        // Atualiza barra de HP (Vida) e atributos
+        atualizarBarrasStatusRPG();
+        atualizarAtributosManutencao();
+        
         // Desativa aura de refeição se estiver ativa
-        desativarAuraRefeicao();
+        if (typeof desativarAuraRefeicao === 'function') {
+            desativarAuraRefeicao();
+        }
         
         // Adiciona +10 Vitalidade (energia_total)
         if (window.userProfile) {
@@ -5911,6 +6423,9 @@ async function marcarRefeicao(tipo) {
         alert('Erro ao marcar refeição. Tente novamente.');
     }
 }
+
+// Redefine a função global com a implementação completa
+window.marcarRefeicao = marcarRefeicao;
 
 /**
  * Abre o timer de atividade física (modal ou widget antigo)
@@ -5969,25 +6484,38 @@ function iniciarAtividadeFisica() {
     if (timerModal) timerModal.classList.remove('hidden');
     if (inicioModal) inicioModal.classList.add('hidden');
     
+    // Limpa timer anterior se existir (prevenção de múltiplos timers)
+    if (atividadeFisicaTimer) {
+        clearInterval(atividadeFisicaTimer);
+    }
+    
     atividadeFisicaTimer = setInterval(() => {
-        if (!atividadeFisicaPausado) {
-            atividadeFisicaTempoRestante--;
-            
-            const display = document.getElementById('atividade-timer-display');
-            const displayModal = document.getElementById('atividade-timer-display-modal');
-            const minutos = Math.floor(atividadeFisicaTempoRestante / 60);
-            const segundos = atividadeFisicaTempoRestante % 60;
-            const tempoFormatado = `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
-            
-            if (display) {
-                display.textContent = tempoFormatado;
+        try {
+            if (!atividadeFisicaPausado) {
+                atividadeFisicaTempoRestante--;
+                
+                const display = document.getElementById('atividade-timer-display');
+                const displayModal = document.getElementById('atividade-timer-display-modal');
+                const minutos = Math.floor(atividadeFisicaTempoRestante / 60);
+                const segundos = atividadeFisicaTempoRestante % 60;
+                const tempoFormatado = `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+                
+                if (display) {
+                    display.textContent = tempoFormatado;
+                }
+                if (displayModal) {
+                    displayModal.textContent = tempoFormatado;
+                }
+                
+                if (atividadeFisicaTempoRestante <= 0) {
+                    finalizarAtividadeFisica();
+                }
             }
-            if (displayModal) {
-                displayModal.textContent = tempoFormatado;
-            }
-            
-            if (atividadeFisicaTempoRestante <= 0) {
-                finalizarAtividadeFisica();
+        } catch (error) {
+            console.error('❌ Erro no timer de atividade física:', error);
+            if (atividadeFisicaTimer) {
+                clearInterval(atividadeFisicaTimer);
+                atividadeFisicaTimer = null;
             }
         }
     }, 1000);
@@ -6034,7 +6562,7 @@ async function finalizarAtividadeFisica() {
     
     try {
         // Salva no Supabase
-        const hoje = new Date().toISOString().split('T')[0];
+        const hoje = getLocalDateString();
         await client
             .from('atividades')
             .insert([{
@@ -6169,7 +6697,7 @@ async function registrarEvolucaoBiometria() {
         }
         
         // Atualiza última data de registro para Quest Semanal
-        localStorage.setItem('ultimaBiometriaData', new Date().toISOString().split('T')[0]);
+        localStorage.setItem('ultimaBiometriaData', getLocalDateString());
         
         // Esconde card de Quest Semanal se estiver visível
         const questCard = document.getElementById('quest-biometria-semanal');
@@ -6425,7 +6953,7 @@ let questBiometriaInterval = null;
  */
 function verificarQuestBiometriaSemanal() {
     const ultimaData = localStorage.getItem('ultimaBiometriaData');
-    const hoje = new Date().toISOString().split('T')[0];
+    const hoje = getLocalDateString();
     
     if (!ultimaData) {
         // Primeira vez - mostra o card
@@ -6743,6 +7271,86 @@ async function salvarMedicamento(event) {
 }
 
 /**
+ * Cancela notificações de forma segura (evita crash no Android)
+ */
+async function cancelarNotificacaoSegura(notificationId) {
+    if (!capacitorAvailable || !LocalNotifications) {
+        return;
+    }
+    
+    // Valida se o ID é um número inteiro válido
+    const id = parseInt(notificationId, 10);
+    if (isNaN(id) || id <= 0) {
+        console.warn('⚠️ ID de notificação inválido:', notificationId);
+        return;
+    }
+    
+    try {
+        // Obtém notificações pendentes primeiro
+        const pendentes = await LocalNotifications.getPending();
+        
+        if (pendentes && pendentes.notifications && pendentes.notifications.length > 0) {
+            // Verifica se a notificação existe antes de cancelar
+            const existe = pendentes.notifications.some(n => n.id === id);
+            
+            if (existe) {
+                await LocalNotifications.cancel({ notifications: [id] });
+                console.log('✅ Notificação cancelada:', id);
+            } else {
+                console.log('ℹ️ Notificação não encontrada nas pendentes:', id);
+            }
+        } else {
+            console.log('ℹ️ Nenhuma notificação pendente para cancelar');
+        }
+    } catch (error) {
+        console.error('❌ Erro ao cancelar notificação:', error);
+        // Não lança erro para evitar crash
+    }
+}
+
+/**
+ * Gera um ID de notificação válido a partir de um medicamentoId
+ * Usa apenas os últimos 6 dígitos numéricos do UUID ou timestamp
+ */
+function gerarNotificationId(medicamentoId) {
+    if (!medicamentoId) {
+        console.error('❌ medicamentoId não fornecido');
+        return null;
+    }
+    
+    // Extrai apenas os dígitos numéricos do UUID
+    const digitos = String(medicamentoId).replace(/[^0-9]/g, '');
+    
+    if (digitos.length >= 6) {
+        // Usa os últimos 6 dígitos numéricos
+        const id = parseInt(digitos.slice(-6), 10);
+        if (!isNaN(id) && id > 0) {
+            return id;
+        }
+    }
+    
+    // Fallback: usa timestamp (últimos 6 dígitos)
+    const timestamp = Math.floor(Date.now() / 1000);
+    const idFallback = parseInt(String(timestamp).slice(-6), 10);
+    
+    if (!isNaN(idFallback) && idFallback > 0) {
+        console.log('✅ ID gerado via timestamp:', idFallback);
+        return idFallback;
+    }
+    
+    // Último fallback: hash simples limitado a 6 dígitos
+    let hash = 0;
+    const str = String(medicamentoId);
+    for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash = hash & hash;
+    }
+    const finalId = Math.abs(hash) % 999999; // Limita a 6 dígitos
+    console.log('✅ ID gerado via hash:', finalId);
+    return finalId;
+}
+
+/**
  * Agenda notificação para um medicamento
  */
 async function agendarNotificacaoMedicamento(medicamentoId, nome, dosagem, horario) {
@@ -6767,9 +7375,15 @@ async function agendarNotificacaoMedicamento(medicamentoId, nome, dosagem, horar
     }
     
     try {
-        // Cancela notificações antigas deste medicamento
-        const notificationId = parseInt(`${medicamentoId}`.replace(/-/g, '').substring(0, 9), 10);
-        await LocalNotifications.cancel({ notifications: [notificationId] });
+        // Gera ID de notificação válido
+        const notificationId = gerarNotificationId(medicamentoId);
+        if (!notificationId) {
+            console.error('❌ Não foi possível gerar ID de notificação válido');
+            return;
+        }
+        
+        // Cancela notificações antigas deste medicamento de forma segura
+        await cancelarNotificacaoSegura(notificationId);
         
         // Calcula data da notificação
         const [hora, minuto] = horario.split(':').map(Number);
@@ -6822,7 +7436,7 @@ async function verificarResetMedicamentosDiario() {
     if (!client || !window.currentUser?.id) return;
     
     const ultimoReset = localStorage.getItem('ultimoResetMedicamentos');
-    const hoje = new Date().toISOString().split('T')[0];
+    const hoje = getLocalDateString();
     
     if (ultimoReset !== hoje) {
         try {
@@ -6889,21 +7503,31 @@ function renderizarMedicamentos() {
     
     container.innerHTML = medicamentos.map(med => {
         const dosagemStr = med.dosagem ? ` (${med.dosagem})` : '';
-        const tomadoClass = med.tomado_hoje ? 'opacity-50' : '';
+        const tomadoClass = med.tomado_hoje ? 'tomado' : '';
         const tomadoBadge = med.tomado_hoje ? '<span class="text-xs bg-green-600 px-2 py-1 rounded">✓ Tomado</span>' : '';
+        
+        // Botão diferente se já está tomado (permite reverter)
+        const botaoTomar = med.tomado_hoje 
+            ? `<button onclick="tomarMedicamento('${med.id}')" class="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-white rounded text-xs font-semibold">↩️ Reverter</button>`
+            : `<button onclick="tomarMedicamento('${med.id}')" class="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold">💊 Tomar</button>`;
+        
+        // Estilo de frasco de poção
         return `
-            <div class="bg-[#1a1a1a] border border-gray-800 rounded-xl p-2 ${tomadoClass}">
+            <div class="frasco-pocao ${tomadoClass}">
                 <div class="flex items-center justify-between">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-1">
-                            <h3 class="font-semibold text-sm">${med.nome}${dosagemStr}</h3>
-                            ${tomadoBadge}
+                    <div class="flex items-center gap-3 flex-1">
+                        <div class="text-3xl">🧪</div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <h3 class="font-semibold text-sm">${med.nome}${dosagemStr}</h3>
+                                ${tomadoBadge}
+                            </div>
+                            <p class="text-xs text-gray-400">⏰ ${med.horario}</p>
+                            <p class="text-xs text-gray-500">Estoque: ${med.estoque}</p>
                         </div>
-                        <p class="text-xs text-gray-400">⏰ ${med.horario}</p>
-                        <p class="text-xs text-gray-500">Estoque: ${med.estoque}</p>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="tomarMedicamento('${med.id}')" class="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold" ${med.tomado_hoje ? 'disabled' : ''}>Tomar</button>
+                        ${botaoTomar}
                         <button onclick="editarMedicamento('${med.id}')" class="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold">Editar</button>
                         <button onclick="excluirMedicamento('${med.id}')" class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold">Excluir</button>
                     </div>
@@ -6942,10 +7566,12 @@ async function excluirMedicamento(id) {
     }
     
     try {
-        // Cancela notificações
+        // Cancela notificações de forma segura
         if (capacitorAvailable && LocalNotifications) {
-            const notificationId = parseInt(`${id}`.replace(/-/g, '').substring(0, 9), 10);
-            await LocalNotifications.cancel({ notifications: [notificationId] });
+            const notificationId = gerarNotificationId(id);
+            if (notificationId) {
+                await cancelarNotificacaoSegura(notificationId);
+            }
         }
         
         // Remove do Supabase
@@ -6966,6 +7592,92 @@ async function excluirMedicamento(id) {
 }
 
 /**
+ * Cancela todas as notificações pendentes de um medicamento
+ */
+async function cancelarTodasNotificacoesMedicamento(medicamentoId) {
+    if (!capacitorAvailable || !LocalNotifications) {
+        return;
+    }
+    
+    try {
+        // Obtém todas as notificações pendentes
+        const pendentes = await LocalNotifications.getPending();
+        
+        if (pendentes && pendentes.notifications && pendentes.notifications.length > 0) {
+            // Filtra notificações relacionadas a este medicamento
+            const idsParaCancelar = [];
+            
+            pendentes.notifications.forEach(notif => {
+                const extra = notif.extra || {};
+                if (extra.medicamentoId && String(extra.medicamentoId) === String(medicamentoId)) {
+                    idsParaCancelar.push(notif.id);
+                }
+            });
+            
+            // Cancela todas as notificações encontradas
+            if (idsParaCancelar.length > 0) {
+                await LocalNotifications.cancel({ notifications: idsParaCancelar });
+                console.log(`✅ ${idsParaCancelar.length} notificação(ões) cancelada(s) para medicamento:`, medicamentoId);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Erro ao cancelar notificações do medicamento:', error);
+        // Não lança erro para evitar crash
+    }
+}
+
+/**
+ * Reverte o status de tomado (desmarca como tomado)
+ */
+async function reverterTomarMedicamento(medicamentoId) {
+    const client = getSupabaseClient();
+    if (!client || !window.currentUser?.id) {
+        alert('Erro: usuário não autenticado');
+        return;
+    }
+    
+    try {
+        const medicamento = medicamentos.find(m => m.id === medicamentoId);
+        if (!medicamento) {
+            alert('Medicamento não encontrado');
+            return;
+        }
+        
+        // Reverte o status no Supabase
+        await client
+            .from('alquimia_medicamentos')
+            .update({ 
+                tomado_hoje: false,
+                ultima_dose: null
+            })
+            .eq('id', medicamentoId)
+            .eq('user_id', window.currentUser.id);
+        
+        // Remove a atividade relacionada (se existir)
+        const hoje = getLocalDateString();
+        await client
+            .from('atividades')
+            .delete()
+            .eq('user_id', window.currentUser.id)
+            .eq('nome_tarefa', `Medicamento: ${medicamento.nome}`)
+            .eq('data_completada', hoje);
+        
+        // Remove XP (se possível)
+        if (window.pointsSystem) {
+            window.pointsSystem.addPoints(-20); // Remove 20 XP
+        }
+        
+        // Recarrega lista
+        await carregarMedicamentos();
+        
+        alert('↩️ Status revertido. Você pode tomar o medicamento novamente.');
+    } catch (error) {
+        console.error('Erro ao reverter status do medicamento:', error);
+        alert('Erro ao reverter status. Tente novamente.');
+    }
+}
+
+/**
  * Toma medicamento (marca como tomado hoje)
  */
 async function tomarMedicamento(medicamentoId) {
@@ -6981,6 +7693,15 @@ async function tomarMedicamento(medicamentoId) {
             alert('Medicamento não encontrado');
             return;
         }
+        
+        // Se já está tomado, reverte o status
+        if (medicamento.tomado_hoje) {
+            await reverterTomarMedicamento(medicamentoId);
+            return;
+        }
+        
+        // Cancela TODAS as notificações pendentes deste medicamento
+        await cancelarTodasNotificacoesMedicamento(medicamentoId);
         
         const novoEstoque = Math.max(0, (medicamento.estoque || 0) - 1);
         const agora = new Date().toISOString();
@@ -7008,13 +7729,14 @@ async function tomarMedicamento(medicamentoId) {
                 user_id: window.currentUser.id,
                 nome_tarefa: `Medicamento: ${medicamento.nome}`,
                 categoria: 'Saúde',
-                data_completada: new Date().toISOString().split('T')[0],
+                data_completada: getLocalDateString(),
                 progresso: 100,
                 dados_extras: { tipo: 'medicamento', xp: 20 }
             }]);
         
-        // Desativa borbulha
+        // Desativa borbulha e aura
         desativarBorbulhaFrasco();
+        desativarAuraMedicamento();
         
         // Recarrega lista
         await carregarMedicamentos();
@@ -7038,18 +7760,54 @@ async function tomarMedicamento(medicamentoId) {
 
 /**
  * Confirma ingestão de medicamento (chamado pela notificação)
+ * Não permite reverter se chamado pela notificação
  */
 async function confirmarIngestaoMedicamento(medicamentoId) {
-    await tomarMedicamento(medicamentoId);
+    const client = getSupabaseClient();
+    if (!client || !window.currentUser?.id) {
+        return;
+    }
+    
+    try {
+        const medicamento = medicamentos.find(m => m.id === medicamentoId);
+        if (!medicamento) {
+            return;
+        }
+        
+        // Se já está tomado, não faz nada (não reverte via notificação)
+        if (medicamento.tomado_hoje) {
+            console.log('ℹ️ Medicamento já foi tomado hoje');
+            return;
+        }
+        
+        // Chama a função normal de tomar (que cancela notificações)
+        await tomarMedicamento(medicamentoId);
+    } catch (error) {
+        console.error('Erro ao confirmar ingestão:', error);
+    }
 }
 
 /**
  * Adia notificação de medicamento em 30 minutos
+ * Verifica se o medicamento já foi tomado antes de adiar
  */
 async function adiarMedicamento30min(medicamentoId, nome, dosagem, horario) {
+    // Verifica se o medicamento já foi tomado
+    const medicamento = medicamentos.find(m => m.id === medicamentoId);
+    if (medicamento && medicamento.tomado_hoje) {
+        console.log('ℹ️ Medicamento já foi tomado, não será adiado');
+        return;
+    }
+    
     if (!capacitorAvailable || !LocalNotifications) {
         // Fallback: usa setTimeout
         setTimeout(() => {
+            // Verifica novamente antes de mostrar alerta
+            const med = medicamentos.find(m => m.id === medicamentoId);
+            if (med && med.tomado_hoje) {
+                return; // Não mostra se já foi tomado
+            }
+            
             const frasco = document.getElementById('frascoAlquimia');
             if (frasco) {
                 frasco.classList.add('frasco-borbulhando');
@@ -7060,10 +7818,26 @@ async function adiarMedicamento30min(medicamentoId, nome, dosagem, horario) {
     }
     
     try {
+        // Verifica novamente antes de agendar
+        const med = medicamentos.find(m => m.id === medicamentoId);
+        if (med && med.tomado_hoje) {
+            console.log('ℹ️ Medicamento já foi tomado, cancelando adiamento');
+            return;
+        }
+        
         const agora = new Date();
         const novaData = new Date(agora.getTime() + 30 * 60 * 1000); // +30 minutos
         
-        const notificationId = parseInt(`${medicamentoId}${Date.now()}`.substring(0, 9), 10);
+        // Gera ID único para notificação adiada usando a função segura
+        // Combina medicamentoId com timestamp para garantir unicidade
+        const idComTimestamp = String(medicamentoId) + String(Date.now());
+        let notificationId = gerarNotificationId(idComTimestamp);
+        
+        // Se ainda não conseguir, usa timestamp direto
+        if (!notificationId) {
+            notificationId = parseInt(String(Math.floor(Date.now() / 1000)).slice(-6), 10);
+        }
+        
         const bodyText = dosagem ? `${nome} (${dosagem}) - ${horario}` : `${nome} - ${horario}`;
         
         await LocalNotifications.schedule({
@@ -7183,7 +7957,13 @@ async function enviarNotificacaoMedicamento(medicamento) {
     }
     
     try {
-        const notificationId = parseInt(`${medicamento.id}`.replace(/-/g, '').substring(0, 9), 10);
+        // Gera ID de notificação válido
+        const notificationId = gerarNotificationId(medicamento.id);
+        if (!notificationId) {
+            console.error('❌ Não foi possível gerar ID de notificação válido');
+            return;
+        }
+        
         const bodyText = medicamento.dosagem ? 
             `${medicamento.nome} (${medicamento.dosagem}) - ${medicamento.horario}` : 
             `${medicamento.nome} - ${medicamento.horario}`;
@@ -7264,19 +8044,42 @@ function verificarAuraMedicamento() {
 }
 
 /**
- * Ativa aura de alerta de medicamento (branco intenso)
+ * Ativa aura de alerta de medicamento (Branca pulsante usando aura-escudo)
  */
 function ativarAuraMedicamento() {
+    if (auraMedicamentoAtiva) return; // Já está ativa
+    
     auraMedicamentoAtiva = true;
-    document.body.classList.add('aura-medicamento-alerta');
+    const aura = document.getElementById('aura-escudo');
+    const body = document.body;
+    
+    if (aura) {
+        aura.classList.add('aura-branca');
+        aura.classList.remove('opacity-0');
+        aura.style.opacity = '1';
+    }
+    
+    body.classList.add('aura-medicamento-alerta');
+    console.log('✅ Aura branca de medicamento ativada');
 }
 
 /**
  * Desativa aura de alerta de medicamento
  */
 function desativarAuraMedicamento() {
+    if (!auraMedicamentoAtiva) return; // Já está desativada
+    
     auraMedicamentoAtiva = false;
-    document.body.classList.remove('aura-medicamento-alerta');
+    const aura = document.getElementById('aura-escudo');
+    const body = document.body;
+    
+    if (aura) {
+        aura.classList.remove('aura-branca');
+        aura.style.opacity = '0';
+    }
+    
+    body.classList.remove('aura-medicamento-alerta');
+    console.log('✅ Aura branca de medicamento desativada');
 }
 
 /**
@@ -7402,33 +8205,75 @@ async function salvarTemaRPG(temaAtivo) {
 }
 
 /**
- * Aplica ou remove tema RPG
+ * Aplica o tema visual
  */
-function aplicarTemaRPG(ativo) {
+function aplicarTema(tema) {
     const body = document.body;
-    const toggle = document.getElementById('temaRpgToggle');
-    const texto = document.getElementById('temaAtualTexto');
+    const main = document.querySelector('main');
     
-    if (ativo) {
+    if (tema === 'rpg') {
         body.classList.add('tema-rpg');
-        if (toggle) toggle.checked = true;
-        if (texto) texto.textContent = 'Modo RPG (Imersivo) ativo';
+        if (main) main.classList.add('bg-[#000000]');
     } else {
         body.classList.remove('tema-rpg');
-        if (toggle) toggle.checked = false;
-        if (texto) texto.textContent = 'Modo Minimalista (AMOLED) ativo';
+        if (main) main.classList.remove('bg-[#000000]');
     }
 }
 
 /**
- * Alterna tema RPG
+ * Alterna entre Tema Moderno e Tema RPG
+ */
+async function alternarTema(tema) {
+    aplicarTema(tema);
+    
+    // Salva no localStorage imediatamente
+    localStorage.setItem('temaAtual', tema);
+    
+    // Atualiza texto
+    const temaAtualTexto = document.getElementById('temaAtualTexto');
+    if (temaAtualTexto) {
+        temaAtualTexto.textContent = tema === 'rpg' ? 'Tema RPG ativo' : 'Tema Moderno ativo';
+    }
+    
+    // Tenta salvar no Supabase (não bloqueia se falhar)
+    const client = getSupabaseClient();
+    if (client && window.currentUser?.id) {
+        try {
+            await client
+                .from('profiles')
+                .update({ tema_rpg: tema === 'rpg' })
+                .eq('id', window.currentUser.id);
+        } catch (error) {
+            console.warn('Erro ao salvar tema no Supabase:', error);
+        }
+    }
+    
+    // Atualiza barras e atributos após mudança de tema
+    atualizarBarrasStatusRPG();
+    atualizarAtributosManutencao();
+}
+
+/**
+ * Aplica ou remove tema RPG (compatibilidade)
+ */
+function aplicarTemaRPG(ativo) {
+    aplicarTema(ativo ? 'rpg' : 'moderno');
+}
+
+/**
+ * Alterna tema RPG (compatibilidade)
  */
 async function alternarTemaRPG() {
     const toggle = document.getElementById('temaRpgToggle');
-    const temaAtivo = toggle?.checked || false;
-    
-    aplicarTemaRPG(temaAtivo);
-    await salvarTemaRPG(temaAtivo);
+    if (toggle) {
+        const temaAtivo = toggle.checked;
+        await alternarTema(temaAtivo ? 'rpg' : 'moderno');
+    } else {
+        // Se não encontrar toggle antigo, alterna baseado no estado atual
+        const temaAtual = localStorage.getItem('temaAtual') || 'moderno';
+        const novoTema = temaAtual === 'rpg' ? 'moderno' : 'rpg';
+        await alternarTema(novoTema);
+    }
 }
 
 // Expor funções globalmente
@@ -7442,6 +8287,9 @@ window.confirmarIngestaoMedicamento = confirmarIngestaoMedicamento;
 window.adiarMedicamento30min = adiarMedicamento30min;
 window.tomarMedicamento = tomarMedicamento;
 window.alternarTemaRPG = alternarTemaRPG;
+window.alternarTema = alternarTema;
+window.aplicarTema = aplicarTema;
+window.aplicarTemaRPG = aplicarTemaRPG;
 
 // Expor funções globalmente
 window.registrarEvolucaoBiometria = registrarEvolucaoBiometria;
@@ -7454,6 +8302,127 @@ window.iniciarAtividadeFisica = iniciarAtividadeFisica;
 window.pausarAtividadeFisica = pausarAtividadeFisica;
 window.finalizarAtividadeFisica = finalizarAtividadeFisica;
 
+/**
+ * Mostra/oculta abas do Dashboard
+ */
+function mostrarAbaDashboard(aba) {
+    const abaSaude = document.getElementById('dashboard-saude');
+    const abaAlquimia = document.getElementById('dashboard-alquimia');
+    const tabSaude = document.getElementById('tab-saude');
+    const tabAlquimia = document.getElementById('tab-alquimia');
+    
+    if (aba === 'saude') {
+        if (abaSaude) abaSaude.classList.remove('hidden');
+        if (abaAlquimia) abaAlquimia.classList.add('hidden');
+        if (tabSaude) {
+            tabSaude.classList.add('border-indigo-500', 'text-indigo-400');
+            tabSaude.classList.remove('border-transparent', 'text-gray-400');
+        }
+        if (tabAlquimia) {
+            tabAlquimia.classList.remove('border-indigo-500', 'text-indigo-400');
+            tabAlquimia.classList.add('border-transparent', 'text-gray-400');
+        }
+    } else if (aba === 'alquimia') {
+        if (abaSaude) abaSaude.classList.add('hidden');
+        if (abaAlquimia) abaAlquimia.classList.remove('hidden');
+        if (tabSaude) {
+            tabSaude.classList.remove('border-indigo-500', 'text-indigo-400');
+            tabSaude.classList.add('border-transparent', 'text-gray-400');
+        }
+        if (tabAlquimia) {
+            tabAlquimia.classList.add('border-indigo-500', 'text-indigo-400');
+            tabAlquimia.classList.remove('border-transparent', 'text-gray-400');
+        }
+    }
+}
+
+/**
+ * Atualiza as barras de Status RPG (HP e Mana)
+ */
+function atualizarBarrasStatusRPG() {
+    // Calcula HP baseado em refeições (0-3 refeições = 0-100%)
+    const refeicoesCompletas = Object.values(refeicoesMarcadas).filter(r => r === true).length;
+    const hpPercent = Math.round((refeicoesCompletas / 3) * 100);
+    
+    const hpBar = document.getElementById('hp-bar-fill');
+    const hpPercentEl = document.getElementById('hp-percent');
+    if (hpBar) {
+        hpBar.style.width = `${hpPercent}%`;
+    }
+    if (hpPercentEl) {
+        hpPercentEl.textContent = `${hpPercent}%`;
+    }
+    
+    // Calcula Mana baseado em água (0-2000ml = 0-100%)
+    const manaPercent = Math.min(100, Math.round((waterAmount / waterTarget) * 100));
+    
+    const manaBar = document.getElementById('mana-bar-fill');
+    const manaPercentEl = document.getElementById('mana-percent');
+    if (manaBar) {
+        manaBar.style.width = `${manaPercent}%`;
+    }
+    if (manaPercentEl) {
+        manaPercentEl.textContent = `${manaPercent}%`;
+    }
+}
+
+/**
+ * Atualiza os atributos de manutenção (ícones que brilham quando completados)
+ */
+function atualizarAtributosManutencao() {
+    // Água
+    const atributoAgua = document.getElementById('atributo-agua');
+    if (atributoAgua) {
+        const aguaPercent = Math.min(100, Math.round((waterAmount / waterTarget) * 100));
+        if (aguaPercent >= 100) {
+            atributoAgua.classList.add('completo');
+        } else {
+            atributoAgua.classList.remove('completo');
+        }
+    }
+    
+    // Refeições
+    const atributoCafe = document.getElementById('atributo-cafe');
+    const atributoAlmoco = document.getElementById('atributo-almoco');
+    const atributoJantar = document.getElementById('atributo-jantar');
+    
+    if (atributoCafe) {
+        if (refeicoesMarcadas.cafe) {
+            atributoCafe.classList.add('completo');
+        } else {
+            atributoCafe.classList.remove('completo');
+        }
+    }
+    
+    if (atributoAlmoco) {
+        if (refeicoesMarcadas.almoco) {
+            atributoAlmoco.classList.add('completo');
+        } else {
+            atributoAlmoco.classList.remove('completo');
+        }
+    }
+    
+    if (atributoJantar) {
+        if (refeicoesMarcadas.jantar) {
+            atributoJantar.classList.add('completo');
+        } else {
+            atributoJantar.classList.remove('completo');
+        }
+    }
+    
+    // Treino e Limpeza (verificar se há timers ativos ou completados hoje)
+    const atributoTreino = document.getElementById('atributo-treino');
+    const atributoLimpeza = document.getElementById('atributo-limpeza');
+    
+    // Por enquanto, apenas remove classe completo se não houver lógica específica
+    // Lógica para verificar treino e limpeza pode ser adicionada aqui
+}
+
+// Expor funções globalmente
+window.mostrarAbaDashboard = mostrarAbaDashboard;
+window.atualizarBarrasStatusRPG = atualizarBarrasStatusRPG;
+window.atualizarAtributosManutencao = atualizarAtributosManutencao;
+
 // Inicialização
 let pointsSystem;
 let missionsSystem;
@@ -7465,10 +8434,19 @@ let dashboardSystem;
 /**
  * Inicializa o app (chamado após autenticação)
  */
+// Variável global para armazenar intervalo de reset de refeições
+let resetRefeicoesInterval = null;
+
 function inicializarApp() {
     // Evita inicialização duplicada
     if (pointsSystem) {
         return;
+    }
+    
+    // Limpa intervalos anteriores se existirem (prevenção de múltiplos intervalos)
+    if (resetRefeicoesInterval) {
+        clearInterval(resetRefeicoesInterval);
+        resetRefeicoesInterval = null;
     }
     
     // Inicializa sistemas
@@ -7500,38 +8478,46 @@ function inicializarApp() {
         }
     };
     
-    // Inicializa widgets de ações instantâneas
-    // loadWaterAmount() já faz o reset diário automaticamente
-    loadWaterAmount();
+    // Carregamento inicial mínimo (apenas dados essenciais do localStorage)
+    loadWaterAmount(); // Carrega água do localStorage (rápido)
+    verificarResetRefeicoes(); // Verifica reset (rápido)
+    carregarRefeicoesMarcadas(); // Carrega do localStorage (rápido)
+    atualizarBarrasStatusRPG(); // Atualiza barras (rápido)
+    atualizarAtributosManutencao(); // Atualiza atributos (rápido)
     
-    // Inicializa sistema de manutenção corporal
-    verificarResetRefeicoes();
-    carregarRefeicoesMarcadas();
-    verificarBrilhoSaude();
-    atualizarEstadoWidgets(); // Atualiza estados visuais dos widgets compactos
-    
-    // Carrega configurações de notificação e inicia verificações
-    carregarConfigsNotificacao().then(() => {
-        iniciarVerificacaoAuraRefeicao();
-    });
-    
-    // Verifica Quest Semanal de Biometria
-    verificarQuestBiometriaSemanal();
-    
-    // Inicializa sistema de medicamentos
-    inicializarCapacitor().then(() => {
-        verificarResetMedicamentosDiario().then(() => {
-            carregarMedicamentos();
-        });
-    });
-    
-    // Carrega tema RPG
+    // Carrega tema do localStorage (rápido)
     carregarTemaRPG();
     
-    // Verifica reset de refeições a cada minuto
-    setInterval(() => {
-        verificarResetRefeicoes();
-    }, 60 * 1000);
+    // Inicializa Capacitor (necessário para notificações)
+    inicializarCapacitor().then(() => {
+        // Verifica reset de medicamentos (operação leve)
+        verificarResetMedicamentosDiario();
+    });
+    
+    // Carregamento sob demanda - apenas quando necessário
+    // Configurações de notificação serão carregadas quando necessário
+    // Medicamentos serão carregados quando navegar para Dashboard
+    // Missões serão carregadas quando navegar para Quests
+    
+    // Otimização: Verifica reset de refeições a cada 60 segundos (não mais rápido)
+    // CORREÇÃO: Armazena em variável para poder limpar se necessário
+    if (resetRefeicoesInterval) {
+        clearInterval(resetRefeicoesInterval);
+    }
+    resetRefeicoesInterval = setInterval(() => {
+        try {
+            verificarResetRefeicoes();
+        } catch (error) {
+            console.error('❌ Erro ao verificar reset de refeições:', error);
+        }
+    }, 60000); // 60 segundos
+    
+    // Navega para Dashboard como página inicial
+    setTimeout(() => {
+        if (navigationSystem) {
+            navigationSystem.navigateTo('dashboard');
+        }
+    }, 100);
     
     // Fecha modal de configurações ao clicar fora
     const waterSettingsModal = document.getElementById('waterSettingsModal');
@@ -7567,6 +8553,9 @@ function inicializarApp() {
     
     // Verifica eventos externos ao carregar
     verificarEventosExternos();
+    
+    // Atualiza atributos de manutenção inicialmente
+    atualizarAtributosManutencao();
     
     // Fecha FAB ao clicar fora
     document.addEventListener('click', (e) => {
@@ -7613,7 +8602,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Configura botão de login
     const loginBtn = document.getElementById('loginBtn');
     if (loginBtn) {
-        loginBtn.addEventListener('click', () => {
+        loginBtn.addEventListener('click', (e) => {
+            e.preventDefault(); // Previne reload da página
+            e.stopPropagation(); // Previne propagação do evento
+            console.log('🔐 Botão de login clicado');
             enviarMagicLink();
         });
     }

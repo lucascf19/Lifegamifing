@@ -27,6 +27,58 @@
         .btn-min-height {
             min-height: 48px;
         }
+        /* Container de Criação de Personagem - CSS DE EMERGÊNCIA (sem animações, sem transições) */
+        .container-criacao {
+            background-color: #121212 !important;
+            height: 100vh !important;
+            width: 100vw !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            z-index: 9999 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: flex-start !important;
+            padding-top: 150px !important;
+            align-items: center !important;
+            /* DESATIVAR TODAS AS ANIMAÇÕES */
+            animation: none !important;
+            transition: none !important;
+        }
+        /* Campo de nome - INPUT SIMPLES (sem animações) */
+        #characterName {
+            border: 2px solid white !important;
+            padding: 15px !important;
+            color: white !important;
+            background: black !important;
+            width: 80% !important;
+            font-size: 18px !important;
+            /* DESATIVAR TODAS AS ANIMAÇÕES */
+            animation: none !important;
+            transition: none !important;
+        }
+        /* DESATIVAR TODAS AS ANIMAÇÕES GLOBAIS - EMERGÊNCIA */
+        * {
+            animation: none !important;
+            animation-duration: 0s !important;
+            animation-delay: 0s !important;
+            transition: none !important;
+            transition-duration: 0s !important;
+            transition-delay: 0s !important;
+        }
+        /* DESATIVAR KEYFRAMES */
+        @keyframes pulse-red,
+        @keyframes pulse-aura-verde,
+        @keyframes pulse-aura-laranja,
+        @keyframes pulse-aura-amarelo,
+        @keyframes pulse-aura-medicamento,
+        @keyframes pulse-aura-branca,
+        @keyframes pulse-brilho,
+        @keyframes borbulhar,
+        @keyframes bolhas,
+        @keyframes pulse-vermelho {
+            /* DESATIVADAS PARA ESTABILIZAR FRAME RATE */
+        }
         /* Efeito de Aura sobreposta (Camada) */
         .aura-amarela {
             opacity: 1 !important;
@@ -100,6 +152,107 @@
         .aura-medicamento-alerta {
             animation: pulse-aura-medicamento 1.5s ease-in-out infinite;
             border: 4px solid transparent;
+        }
+        
+        /* Estilo das Barras de Status RPG */
+        .status-bar-container {
+            height: 24px;
+            background: #1a1a1a;
+            border: 2px solid #4a4a4a; /* Moldura de pedra */
+            border-radius: 4px;
+            box-shadow: inset 0 0 10px #000;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Barra de Vida (Refeições/Saúde) */
+        #hp-bar-fill {
+            background: linear-gradient(90deg, #8b0000, #ff0000);
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+            height: 100%;
+            transition: width 0.3s ease-out;
+        }
+
+        /* Barra de Mana (Água/Hidratação) */
+        #mana-bar-fill {
+            background: linear-gradient(90deg, #00008b, #00ced1);
+            box-shadow: 0 0 15px rgba(0, 206, 209, 0.5);
+            height: 100%;
+            transition: width 0.3s ease-out;
+        }
+
+        /* Reduz o trabalho da Main Thread */
+        .page {
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+        }
+        
+        /* Aura Branca para Medicamento */
+        @keyframes pulse-aura-branca {
+            0%, 100% { 
+                box-shadow: inset 0 0 0 0 rgba(255, 255, 255, 0);
+            }
+            50% { 
+                box-shadow: inset 0 0 50px 20px rgba(255, 255, 255, 0.8);
+            }
+        }
+        .aura-branca {
+            animation: pulse-aura-branca 1.5s ease-in-out infinite;
+        }
+        
+        /* Frasco de Poção */
+        .frasco-pocao {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            border: 2px solid #4a4a4a;
+            border-radius: 8px 8px 20px 20px;
+            padding: 12px;
+            position: relative;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        .frasco-pocao::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 8px;
+            height: 8px;
+            background: #4a4a4a;
+            border-radius: 2px;
+        }
+        .frasco-pocao.tomado {
+            opacity: 0.5;
+            filter: grayscale(0.7);
+        }
+        
+        /* Atributos de Manutenção - Brilho quando completados */
+        .atributo-slot {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .atributo-slot.completo {
+            border-color: #10b981 !important;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+            animation: pulse-brilho 2s ease-in-out infinite;
+        }
+        @keyframes pulse-brilho {
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+            }
+            50% { 
+                box-shadow: 0 0 30px rgba(16, 185, 129, 0.8);
+            }
+        }
+        
+        /* Tema RPG */
+        .tema-rpg {
+            background: #000000 !important;
+        }
+        .tema-rpg .bg-\[#121212\] {
+            background: #0a0a0a !important;
+        }
+        .tema-rpg .border-gray-800 {
+            border-color: #4a4a4a !important;
         }
         
         /* Animação de Borbulha para Frasco de Medicamento */
@@ -386,6 +539,8 @@
 <body class="bg-black text-white">
     <!-- Camada de Aura do Escudo (sobreposta) -->
     <div id="aura-escudo" class="pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 opacity-0"></div>
+    <!-- Root do React para renderizar componentes -->
+    <div id="root"></div>
     <div id="app">
         <!-- Tela de Login -->
         <div id="loginScreen" class="fixed inset-0 bg-black z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -419,6 +574,7 @@
                     
                     <button 
                         id="loginBtn"
+                        type="button"
                         class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-xl font-semibold transition-colors btn-min-height"
                     >
                         Entrar
@@ -441,137 +597,84 @@
             </div>
         </div>
         
-        <!-- Tela de Criação de Personagem -->
-        <div id="characterCreationScreen" class="fixed inset-0 bg-black z-50 flex items-center justify-center p-4 hidden overflow-y-auto">
-            <div class="w-full max-w-md my-8">
-                <div class="text-center mb-8">
-                    <div class="text-6xl mb-4">✨</div>
-                    <h1 class="text-3xl font-bold mb-2">Criar Personagem</h1>
-                    <p class="text-gray-400">Escolha seu nome e classe inicial</p>
+        <!-- Tela de Criação de Personagem - CSS DE EMERGÊNCIA -->
+        <div id="characterCreationScreen" class="container-criacao hidden" style="background-color: #121212; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; z-index: 9999; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 150px; align-items: center; animation: none; transition: none;">
+            <!-- Input de Nome - SIMPLES -->
+            <div style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center;">
+                <label for="characterName" class="block text-sm font-medium text-gray-300 mb-2">Nome do Avatar</label>
+                <input 
+                    type="text" 
+                    id="characterName" 
+                    placeholder="Ex: Aventureiro"
+                    maxlength="30"
+                    autofocus
+                    autocomplete="off"
+                    style="border: 2px solid white; padding: 15px; color: white; background: black; width: 80%; font-size: 18px; animation: none; transition: none;"
+                />
+            </div>
+            
+            <!-- Container de Classes - Abaixo do input -->
+            <div class="w-full max-w-md mx-auto px-4" style="width: 100%; max-width: 400px; margin-top: 30px;">
+                <div class="text-center mb-4">
+                    <h1 class="text-2xl font-bold mb-1">Criar Personagem</h1>
+                    <p class="text-sm text-gray-400">Escolha sua classe</p>
                 </div>
                 
-                <div class="space-y-6">
-                    <div>
-                        <label for="characterName" class="block text-sm font-medium text-gray-300 mb-2">Nome do Avatar</label>
-                        <input 
-                            type="text" 
-                            id="characterName" 
-                            placeholder="Ex: Aventureiro"
-                            maxlength="30"
-                            class="w-full px-4 py-3 bg-[#121212] border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                        />
-                    </div>
+                <div class="space-y-3">
                     
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-3">Classe Inicial</label>
-                        <div class="flex flex-col gap-3">
-                            <button 
-                                onclick="selecionarClasse('O Hiperfocado')"
-                                class="classe-option p-4 rounded-2xl border border-blue-500/30 bg-[#121212] hover:border-blue-500 transition-colors text-left"
-                                data-classe="O Hiperfocado"
-                            >
-                                <div class="flex items-center gap-3 mb-2">
-                                    <span class="text-3xl">🧠</span>
-                                    <div class="flex-1">
-                                        <div class="font-semibold text-white text-lg">O Hiperfocado</div>
-                                        <div class="text-xs text-blue-400">Bônus em Foco, Escudo de Compromisso mais curto</div>
-                                    </div>
-                                </div>
-                                <p class="text-sm text-gray-400">Ganhe +20% XP em tarefas de 'Foco'. Seu Escudo de Compromisso dura 1h30.</p>
-                            </button>
-                            
-                            <button 
-                                onclick="selecionarClasse('Explorador do Caos')"
-                                class="classe-option p-4 rounded-2xl border border-green-500/30 bg-[#121212] hover:border-green-500 transition-colors text-left"
-                                data-classe="Explorador do Caos"
-                            >
-                                <div class="flex items-center gap-3 mb-2">
-                                    <span class="text-3xl">🌿</span>
-                                    <div class="flex-1">
-                                        <div class="font-semibold text-white text-lg">Explorador do Caos</div>
-                                        <div class="text-xs text-green-400">Bônus aleatórios em Rotina, Recuperação mais rápida</div>
-                                    </div>
-                                </div>
-                                <p class="text-sm text-gray-400">Bônus aleatórios em tarefas de 'Rotina'. Seu Escudo de Recuperação é 2x mais rápido.</p>
-                            </button>
-                            
-                            <button 
-                                onclick="selecionarClasse('Sentinela da Ordem')"
-                                class="classe-option p-4 rounded-2xl border border-yellow-500/30 bg-[#121212] hover:border-yellow-500 transition-colors text-left"
-                                data-classe="Sentinela da Ordem"
-                            >
-                                <div class="flex items-center gap-3 mb-2">
-                                    <span class="text-3xl">🌟</span>
-                                    <div class="flex-1">
-                                        <div class="font-semibold text-white text-lg">Sentinela da Ordem</div>
-                                        <div class="text-xs text-yellow-400">Mais Cristais de Foco com streak</div>
-                                    </div>
-                                </div>
-                                <p class="text-sm text-gray-400">Ganhe 2x mais Cristais de Foco ao manter uma sequência de 3 dias sem ativar escudos.</p>
-                            </button>
-                            
-                            <button 
-                                onclick="selecionarClasse('O Arquiteto de Fluxos')"
-                                class="classe-option p-4 rounded-2xl border border-purple-500/30 bg-[#121212] hover:border-purple-500 transition-colors text-left"
-                                data-classe="O Arquiteto de Fluxos"
-                            >
-                                <div class="flex items-center gap-3 mb-2">
-                                    <span class="text-3xl">🛠️✨</span>
-                                    <div class="flex-1">
-                                        <div class="font-semibold text-white text-lg">O Arquiteto de Fluxos</div>
-                                        <div class="text-xs text-purple-400">Equilibra Ordem e Hiperfoco, Escudo de Saco Cheio potente</div>
-                                    </div>
-                                </div>
-                                <p class="text-sm text-gray-400">Equilibra a Ordem para criar segurança e o Hiperfoco para realizar o impossível. Ganha bônus de combo quando a rotina está em dia, mas possui o 'Escudo de Saco Cheio' mais potente para resetar o sistema quando a novidade sobrecarrega.</p>
-                            </button>
-                        </div>
-                    </div>
+                    <!-- Classes Simplificadas (sem emojis grandes, sem animações, sem transições) -->
+                    <button 
+                        onclick="selecionarClasse('O Hiperfocado')"
+                        class="classe-option p-3 rounded-xl border border-blue-500/30 bg-[#121212] text-left"
+                        data-classe="O Hiperfocado"
+                        style="transition: none;"
+                    >
+                        <div class="font-semibold text-white">O Hiperfocado</div>
+                        <div class="text-xs text-gray-400">+20% XP em Foco</div>
+                    </button>
                     
-                    <!-- Campos de Altura e Peso -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label for="characterHeight" class="block text-sm font-medium text-gray-300 mb-2">Altura (cm)</label>
-                            <input 
-                                type="number" 
-                                id="characterHeight" 
-                                placeholder="Ex: 175"
-                                min="100"
-                                max="250"
-                                class="w-full px-4 py-3 bg-[#121212] border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                            />
-                        </div>
-                        <div>
-                            <label for="characterWeight" class="block text-sm font-medium text-gray-300 mb-2">Peso (kg)</label>
-                            <input 
-                                type="number" 
-                                id="characterWeight" 
-                                placeholder="Ex: 70"
-                                min="30"
-                                max="300"
-                                step="0.1"
-                                class="w-full px-4 py-3 bg-[#121212] border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                            />
-                        </div>
-                    </div>
+                    <button 
+                        onclick="selecionarClasse('Explorador do Caos')"
+                        class="classe-option p-3 rounded-xl border border-green-500/30 bg-[#121212] text-left"
+                        data-classe="Explorador do Caos"
+                        style="transition: none;"
+                    >
+                        <div class="font-semibold text-white">Explorador do Caos</div>
+                        <div class="text-xs text-gray-400">Bônus aleatórios em Rotina</div>
+                    </button>
                     
-                    <div id="characterCreationMessage" class="hidden text-center text-sm"></div>
+                    <button 
+                        onclick="selecionarClasse('Sentinela da Ordem')"
+                        class="classe-option p-3 rounded-xl border border-yellow-500/30 bg-[#121212] text-left"
+                        data-classe="Sentinela da Ordem"
+                        style="transition: none;"
+                    >
+                        <div class="font-semibold text-white">Sentinela da Ordem</div>
+                        <div class="text-xs text-gray-400">2x Cristais com streak</div>
+                    </button>
                     
+                    <button 
+                        onclick="selecionarClasse('O Arquiteto de Fluxos')"
+                        class="classe-option p-3 rounded-xl border border-purple-500/30 bg-[#121212] text-left"
+                        data-classe="O Arquiteto de Fluxos"
+                        style="transition: none;"
+                    >
+                        <div class="font-semibold text-white">O Arquiteto de Fluxos</div>
+                        <div class="text-xs text-gray-400">Equilibra Ordem e Hiperfoco</div>
+                    </button>
+                    
+                    <!-- Botão de Criar -->
                     <button 
                         id="createCharacterBtn"
                         onclick="criarPersonagem()"
                         disabled
-                        class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:text-gray-300 disabled:cursor-not-allowed text-white px-6 py-4 rounded-xl font-semibold transition-colors btn-min-height"
-                        style="opacity: 1; visibility: visible;"
+                        class="w-full bg-indigo-600 disabled:bg-gray-700 disabled:text-gray-300 disabled:cursor-not-allowed text-white px-6 py-4 rounded-xl font-semibold btn-min-height mt-4"
+                        style="transition: none;"
                     >
                         Iniciar Jornada
                     </button>
                     
-                    <button 
-                        id="btn-finalizar-personagem"
-                        class="w-full bg-yellow-400 hover:bg-yellow-500 text-black px-6 py-4 rounded-xl font-semibold transition-colors mb-10"
-                    >
-                        Sincronizar Realidade
-                    </button>
+                    <div id="characterCreationMessage" class="hidden text-center text-sm mt-2"></div>
                 </div>
             </div>
         </div>
@@ -744,23 +847,27 @@
                         </div>
                     </div>
                     
-                    <!-- Alquimia (Medicamentos) -->
-                    <div class="bg-[#121212] border border-gray-800 rounded-2xl p-3">
-                        <div class="flex items-center justify-between mb-3">
-                            <div class="flex items-center gap-2">
-                                <span id="frascoAlquimia" class="text-2xl relative">🧪</span>
-                                <h3 class="text-base font-bold">Alquimia</h3>
+                    </div>
+                    
+                    <!-- Aba: Alquimia (Medicamentos) -->
+                    <div id="dashboard-alquimia" class="hidden space-y-3">
+                        <div class="bg-[#121212] border border-gray-800 rounded-2xl p-3">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <span id="frascoAlquimia" class="text-2xl relative">🧪</span>
+                                    <h3 class="text-base font-bold">Alquimia</h3>
+                                </div>
+                                <button onclick="abrirModalMedicamento()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold">
+                                    + Novo
+                                </button>
                             </div>
-                            <button onclick="abrirModalMedicamento()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold">
-                                + Novo
-                            </button>
-                        </div>
-                        <div id="medicamentosList" class="space-y-2">
-                            <!-- Medicamentos serão inseridos aqui dinamicamente -->
-                        </div>
-                        <div id="medicamentosEmpty" class="text-center py-4 text-gray-400 text-sm">
-                            <div class="text-2xl mb-1">💊</div>
-                            <p>Nenhum medicamento cadastrado</p>
+                            <div id="medicamentosList" class="space-y-2">
+                                <!-- Medicamentos serão inseridos aqui dinamicamente -->
+                            </div>
+                            <div id="medicamentosEmpty" class="text-center py-4 text-gray-400 text-sm">
+                                <div class="text-2xl mb-1">💊</div>
+                                <p>Nenhum medicamento cadastrado</p>
+                            </div>
                         </div>
                     </div>
                     
@@ -812,9 +919,10 @@
                     </div>
                 </div>
                 
-                <div id="missions-page" class="hidden">
-                    <!-- Conteúdo de Missões - APENAS tarefas -->
+                <div id="missions-page" class="hidden page">
+                    <!-- Conteúdo de Quests - Missões variáveis -->
                     <div class="px-3 py-3 pt-4">
+                        <h2 class="text-base font-bold mb-3">⚔️ Quests</h2>
                         <div id="missionsContainer"></div>
                     </div>
                 </div>
@@ -875,7 +983,7 @@
                                 <div class="text-xs text-gray-400">Interface limpa e escura</div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="temaRpgToggle" class="sr-only peer" onchange="alternarTemaRPG()">
+                                <input type="checkbox" id="temaRpgToggle" class="sr-only peer" onchange="if(window.alternarTemaRPG) window.alternarTemaRPG();">
                                 <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                             </label>
                         </div>

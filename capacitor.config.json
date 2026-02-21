@@ -1,5 +1,10 @@
 {
   "appId": "com.lifegaming.app",
-  "appName": "LifeGaming",
-  "webDir": "dist"
+  "appName": "Gaming Life",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
 }
