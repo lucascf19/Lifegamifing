@@ -157,9 +157,17 @@ async function concluirEventoAgenda() {
     // Salva no Supabase
     if (supabaseClient) {
         try {
+            // Usa variável global currentUser.id (garante RLS do Supabase)
+            const userId = window.currentUser?.id;
+            if (!userId) {
+                console.warn('Usuário não autenticado, não será possível salvar evento no Supabase');
+                return;
+            }
+            
             await supabaseClient
                 .from('atividades')
                 .insert([{
+                    user_id: userId,
                     nome_tarefa: `Evento: ${eventoAtual.titulo}`,
                     pontuacao: 50,
                     categoria: 'Social',
@@ -175,6 +183,20 @@ async function concluirEventoAgenda() {
         }
     }
     
+    // Remove IMEDIATAMENTE a aura amarela e o banner
+    const body = document.body;
+    const aura = document.getElementById('aura-escudo');
+    const bannerEscudo = document.getElementById('escudoRotinaIndicador');
+    
+    body.classList.remove('escudo-compromisso', 'border-shield-compromisso', 'aura-amarela', 'aura-roxa');
+    if (aura) {
+        aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 opacity-0';
+        aura.classList.remove('aura-amarela', 'aura-roxa');
+    }
+    if (bannerEscudo) {
+        bannerEscudo.classList.add('hidden');
+    }
+    
     // Confetes de celebração
     if (typeof confetti !== 'undefined') {
         confetti({
@@ -184,6 +206,9 @@ async function concluirEventoAgenda() {
             colors: ['#10b981', '#34d399', '#6ee7b7']
         });
     }
+    
+    // Mostra modal de feedback de humor
+    mostrarModalFeedbackEscudo();
     
     // Vibração
     if (navigator.vibrate) {
@@ -217,57 +242,95 @@ verificarEventosExternos();
 // CONFIGURAÇÃO DO SUPABASE
 // ============================================
 
-// Carrega configurações de variáveis de ambiente (Vercel) ou fallback para config.js
-// No Vercel, as variáveis de ambiente são expostas via window.__ENV__ ou process.env
-// Para desenvolvimento local, usa config.js
-const SUPABASE_URL = 
-    (typeof window !== 'undefined' && window.__ENV__?.NEXT_PUBLIC_SUPABASE_URL) ||
-    (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_URL) ||
-    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) ||
-    window.SUPABASE_CONFIG?.url || 
-    'SUA_URL_DO_SUPABASE_AQUI';
-
-const SUPABASE_ANON_KEY = 
-    (typeof window !== 'undefined' && window.__ENV__?.NEXT_PUBLIC_SUPABASE_ANON_KEY) ||
-    (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY) ||
-    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY) ||
-    window.SUPABASE_CONFIG?.anonKey || 
-    'SUA_ANON_KEY_AQUI';
-
-// Configuração do Supabase com otimizações para região sa-east-1 (São Paulo)
-// Nota: A região é configurada no projeto do Supabase, não no cliente
-// Este cliente está otimizado para trabalhar com a região sa-east-1
-const SUPABASE_OPTIONS = {
-    db: {
-        schema: 'public'
-    },
-    auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true
-    },
-    global: {
-        headers: {
-            'x-client-info': 'app-gamificacao/1.0.0'
-        }
-    }
-};
-
-// Inicializa o cliente Supabase com configuração para região sa-east-1
-let supabaseClient = null;
-if (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL !== 'SUA_URL_DO_SUPABASE_AQUI') {
-    try {
-        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_OPTIONS);
-        console.log('%c✅ Supabase conectado com sucesso!', 'color: #10b981; font-weight: bold;');
-        console.log('%c📍 Região: sa-east-1 (São Paulo)', 'color: #6366f1; font-weight: bold;');
-        console.log('%c🔗 URL:', 'color: #6366f1; font-weight: bold;', SUPABASE_URL);
-    } catch (error) {
-        console.error('%c❌ Erro ao conectar ao Supabase:', 'color: #ef4444; font-weight: bold;', error);
-    }
-} else {
-    console.warn('%c⚠️ Supabase não configurado', 'color: #f59e0b; font-weight: bold;');
-    console.warn('Configure SUPABASE_URL e SUPABASE_ANON_KEY no arquivo config.js ou .env');
+// O cliente Supabase é criado no main.jsx e exposto em window.supabaseClient
+// Este script usa o cliente já criado
+// Função helper para obter o cliente Supabase
+function getSupabaseClient() {
+    return window.supabaseClient || null;
 }
+
+// Variável global para armazenar o objeto completo do usuário após login
+// Isso garante que o RLS do Supabase funcione corretamente
+window.currentUser = null;
+
+/**
+ * Atualiza a variável global currentUser com o objeto completo do usuário autenticado
+ * Deve ser chamada após login bem-sucedido
+ */
+async function updateCurrentUser() {
+    const client = getSupabaseClient();
+    if (!client) {
+        window.currentUser = null;
+        return null;
+    }
+    
+    try {
+        const { data: { session }, error } = await client.auth.getSession();
+        
+        if (error || !session || !session.user) {
+            window.currentUser = null;
+            return null;
+        }
+        
+        window.currentUser = session.user;
+        console.log('✅ currentUser atualizado:', window.currentUser.id, window.currentUser.email);
+        return window.currentUser;
+    } catch (error) {
+        console.error('Erro ao atualizar currentUser:', error);
+        window.currentUser = null;
+        return null;
+    }
+}
+
+/**
+ * Obtém o ID do usuário autenticado de forma consistente
+ * Versão síncrona que retorna da variável global (mais rápida)
+ * @returns {string|null} Retorna o user_id ou null se não estiver autenticado
+ */
+function getCurrentUserId() {
+    // Retorna o ID da variável global se disponível
+    if (window.currentUser && window.currentUser.id) {
+        return window.currentUser.id;
+    }
+    
+    return null;
+}
+
+/**
+ * Versão async do getCurrentUserId para casos que precisam aguardar
+ * @returns {Promise<string|null>} Retorna o user_id ou null se não estiver autenticado
+ */
+async function getCurrentUserIdAsync() {
+    // Primeiro tenta a variável global
+    if (window.currentUser && window.currentUser.id) {
+        return window.currentUser.id;
+    }
+    
+    // Se não houver, atualiza e retorna
+    const user = await updateCurrentUser();
+    return user ? user.id : null;
+}
+
+// Cria um objeto proxy que sempre retorna window.supabaseClient quando acessado
+// Isso permite que todo o código existente continue funcionando sem mudanças
+let supabaseClient = null;
+
+// Atualiza a referência quando o cliente estiver disponível
+const checkSupabaseInterval = setInterval(() => {
+    if (window.supabaseClient) {
+        supabaseClient = window.supabaseClient;
+        console.log('%c✅ Supabase conectado (usando cliente do main.jsx)', 'color: #10b981; font-weight: bold;');
+        clearInterval(checkSupabaseInterval);
+    }
+}, 50);
+
+// Limpa o intervalo após 5 segundos (timeout de segurança)
+setTimeout(() => {
+    clearInterval(checkSupabaseInterval);
+    if (!supabaseClient) {
+        console.warn('%c⚠️ Supabase não encontrado após 5 segundos', 'color: #f59e0b; font-weight: bold;');
+    }
+}, 5000);
 
 // ============================================
 // SISTEMA DE AUTENTICAÇÃO E PERFIL
@@ -278,26 +341,95 @@ let magicLinkCooldown = false; // Previne múltiplos envios
 let magicLinkCooldownTimer = null;
 
 /**
- * Envia Magic Link por e-mail
+ * Login com OAuth (Google, GitHub, etc)
+ * Usa Deep Linking para retornar ao app após autenticação
  */
-async function enviarMagicLink() {
-    // Previne múltiplos envios (rate limiting)
-    if (magicLinkCooldown) {
-        console.warn('Aguarde antes de enviar outro link');
+async function loginWithOAuth(provider = 'google') {
+    const client = getSupabaseClient();
+    if (!client) {
+        console.error('Supabase não configurado');
+        alert('Erro: Supabase não configurado');
         return;
     }
     
+    try {
+        // Detecta se está rodando no Capacitor (app nativo)
+        const isCapacitor = window.Capacitor !== undefined;
+        
+        // Define redirectTo EXATAMENTE como capacitor://localhost para app nativo
+        const redirectTo = isCapacitor 
+            ? 'capacitor://localhost' // Deep Link EXATO para app nativo
+            : `${window.location.origin}${window.location.pathname}`; // URL web
+        
+        console.log('🔐 Iniciando login OAuth com', provider);
+        console.log('📍 RedirectTo (exato):', redirectTo);
+        
+        const { data, error } = await client.auth.signInWithOAuth({
+            provider: provider,
+            options: {
+                redirectTo: redirectTo,
+                skipBrowserRedirect: true // Não redireciona automaticamente, vamos usar Browser.open
+            }
+        });
+        
+        if (error) {
+            console.error('❌ Erro no OAuth:', error);
+            alert(`Erro ao fazer login: ${error.message}`);
+            return;
+        }
+        
+        // Se retornou URL, abre no Browser do Capacitor
+        if (data.url) {
+            console.log('✅ URL de autenticação gerada:', data.url);
+            
+            if (isCapacitor) {
+                // Usa @capacitor/browser para abrir o link de login
+                try {
+                    const { Browser } = await import('@capacitor/browser');
+                    await Browser.open({ 
+                        url: data.url,
+                        windowName: '_self'
+                    });
+                    console.log('🌐 Browser aberto para autenticação OAuth');
+                } catch (browserError) {
+                    console.error('❌ Erro ao abrir Browser:', browserError);
+                    // Fallback: abre em nova aba do navegador
+                    window.open(data.url, '_blank');
+                }
+            } else {
+                // Web: redireciona normalmente
+                window.location.href = data.url;
+            }
+        }
+    } catch (error) {
+        console.error('❌ Erro ao fazer login OAuth:', error);
+        alert(`Erro ao fazer login: ${error.message}`);
+    }
+}
+
+/**
+ * Envia Magic Link por e-mail
+ */
+async function enviarMagicLink() {
     const emailInput = document.getElementById('loginEmail');
+    const passwordInput = document.getElementById('loginPassword');
     const loginBtn = document.getElementById('loginBtn');
     const loginMessage = document.getElementById('loginMessage');
     const loginSuccess = document.getElementById('loginSuccess');
     
-    if (!emailInput || !supabaseClient) {
+    // Obtém o cliente Supabase
+    const client = getSupabaseClient();
+    
+    if (!emailInput || !passwordInput || !client) {
         console.error('Elementos não encontrados ou Supabase não configurado');
+        if (!client) {
+            console.error('Aguarde o Supabase ser inicializado...');
+        }
         return;
     }
     
     const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
     
     if (!email || !email.includes('@')) {
         loginMessage.textContent = 'Por favor, insira um e-mail válido';
@@ -306,59 +438,80 @@ async function enviarMagicLink() {
         return;
     }
     
-    // Ativa cooldown
-    magicLinkCooldown = true;
+    if (!password || password.length < 3) {
+        loginMessage.textContent = 'Por favor, insira uma senha válida';
+        loginMessage.className = 'text-center text-sm text-red-400';
+        loginMessage.classList.remove('hidden');
+        return;
+    }
     
     // Desabilita botão
     loginBtn.disabled = true;
-    loginBtn.textContent = 'Enviando...';
+    loginBtn.textContent = 'Entrando...';
     loginMessage.classList.add('hidden');
-    loginSuccess.classList.add('hidden');
+    loginSuccess.classList.remove('hidden');
     
     try {
-        const { error } = await supabaseClient.auth.signInWithOtp({
+        // Tenta fazer login com email e senha
+        const { data, error } = await client.auth.signInWithPassword({
             email: email,
-            options: {
-                emailRedirectTo: window.location.origin + window.location.pathname
-            }
+            password: password
         });
         
         if (error) {
-            // Se for erro 429 (Too Many Requests), mostra mensagem específica
-            if (error.status === 429 || error.message?.includes('429') || error.message?.includes('Too Many Requests')) {
-                throw new Error('Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.');
+            // Se o usuário não existir, tenta criar
+            if (error.message?.includes('Invalid login credentials') || error.message?.includes('User not found')) {
+                console.log('Usuário não encontrado, tentando criar...');
+                
+                // Cria o usuário
+                const { data: signUpData, error: signUpError } = await client.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        emailRedirectTo: window.location.origin + window.location.pathname
+                    }
+                });
+                
+                if (signUpError) {
+                    throw signUpError;
+                }
+                
+                // Se criou com sucesso, faz login
+                if (signUpData.user) {
+                    const { data: loginData, error: loginError } = await client.auth.signInWithPassword({
+                        email: email,
+                        password: password
+                    });
+                    
+                    if (loginError) {
+                        throw loginError;
+                    }
+                    
+                    console.log('%c✅ Usuário criado e logado com sucesso!', 'color: #10b981; font-weight: bold;');
+                }
+            } else {
+                throw error;
             }
-            throw error;
+        } else {
+            console.log('%c✅ Login realizado com sucesso!', 'color: #10b981; font-weight: bold;');
         }
         
-        // Sucesso
-        loginSuccess.classList.remove('hidden');
-        loginMessage.classList.add('hidden');
-        loginBtn.textContent = 'Link Enviado!';
+        // Aguarda um pouco para a sessão ser criada
+        await new Promise(resolve => setTimeout(resolve, 300));
         
-        console.log('%c📧 Magic Link enviado com sucesso!', 'color: #10b981; font-weight: bold;');
-        
-        // Cooldown de 60 segundos após sucesso
-        iniciarCooldownMagicLink(60);
+        // Verifica autenticação automaticamente
+        await verificarAutenticacao();
         
     } catch (error) {
-        console.error('Erro ao enviar Magic Link:', error);
+        console.error('Erro ao fazer login:', error);
         
-        let mensagemErro = error.message || 'Erro ao enviar link. Tente novamente.';
-        let cooldownSegundos = 30; // Cooldown padrão
-        
-        // Mensagem específica para rate limiting
-        if (error.status === 429 || error.message?.includes('429') || error.message?.includes('Too Many Requests')) {
-            mensagemErro = 'Muitas tentativas. Aguarde 2 minutos antes de tentar novamente.';
-            cooldownSegundos = 120; // 2 minutos de cooldown
-        }
-        
-        loginMessage.textContent = mensagemErro;
+        loginSuccess.classList.add('hidden');
+        loginMessage.textContent = error.message || 'Erro ao fazer login. Tente novamente.';
         loginMessage.className = 'text-center text-sm text-red-400';
         loginMessage.classList.remove('hidden');
         
-        // Inicia cooldown
-        iniciarCooldownMagicLink(cooldownSegundos);
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Entrar';
     }
 }
 
@@ -418,6 +571,9 @@ function selecionarClasse(classe) {
         } else if (classeData === 'Sentinela da Ordem') {
             btn.classList.remove('border-yellow-500', 'ring-2', 'ring-yellow-500/50');
             btn.classList.add('border-yellow-500/30');
+        } else if (classeData === 'O Arquiteto de Fluxos') {
+            btn.classList.remove('border-purple-500', 'ring-2', 'ring-purple-500/50');
+            btn.classList.add('border-purple-500/30');
         }
     });
     
@@ -433,6 +589,9 @@ function selecionarClasse(classe) {
         } else if (classe === 'Sentinela da Ordem') {
             btnSelecionado.classList.remove('border-yellow-500/30');
             btnSelecionado.classList.add('border-yellow-500', 'ring-2', 'ring-yellow-500/50');
+        } else if (classe === 'O Arquiteto de Fluxos') {
+            btnSelecionado.classList.remove('border-purple-500/30');
+            btnSelecionado.classList.add('border-purple-500', 'ring-2', 'ring-purple-500/50');
         }
     }
     
@@ -452,7 +611,18 @@ async function criarPersonagem() {
     const createBtn = document.getElementById('createCharacterBtn');
     const messageEl = document.getElementById('characterCreationMessage');
     
-    if (!nameInput || !createBtn || !supabaseClient) {
+    // Obtém o cliente Supabase
+    const client = getSupabaseClient();
+    
+    if (!nameInput || !createBtn || !client) {
+        if (!client) {
+            console.error('Supabase não configurado');
+            if (messageEl) {
+                messageEl.textContent = 'Aguarde o Supabase ser inicializado...';
+                messageEl.className = 'text-center text-sm text-yellow-400';
+                messageEl.classList.remove('hidden');
+            }
+        }
         return;
     }
     
@@ -478,18 +648,36 @@ async function criarPersonagem() {
     messageEl.classList.add('hidden');
     
     try {
-        // Obtém usuário atual
-        const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+        // Verifica sessão atual primeiro
+        const { data: { session }, error: sessionError } = await client.auth.getSession();
         
-        if (userError || !user) {
-            throw new Error('Usuário não autenticado');
+        if (sessionError) {
+            console.error('Erro ao obter sessão:', sessionError);
+            throw new Error('Erro ao verificar autenticação. Tente fazer login novamente.');
         }
         
+        if (!session) {
+            console.error('Nenhuma sessão encontrada');
+            throw new Error('Usuário não autenticado. Faça login novamente.');
+        }
+        
+        const user = session.user;
+        
+        if (!user || !user.id) {
+            console.error('Usuário não encontrado na sessão:', session);
+            throw new Error('Usuário não encontrado na sessão.');
+        }
+        
+        // Atualiza variável global com o objeto completo do usuário
+        window.currentUser = user;
+        
+        console.log('✅ Usuário autenticado:', user.id, user.email);
+        
         // Cria perfil com ID do usuário logado
-        const { data: profileData, error } = await supabaseClient
+        const { data: profileData, error } = await client
             .from('profiles')
             .insert([{
-                id: user.id, // ID vindo do Auth do Google/Magic Link
+                id: user.id,
                 nome_usuario: nome,
                 classe: classeSelecionada,
                 nivel: 1,
@@ -504,6 +692,16 @@ async function criarPersonagem() {
         
         if (error) {
             console.error('Erro ao criar perfil:', error);
+            // Mensagens mais específicas para erros comuns
+            if (error.code === '23505') {
+                throw new Error('Este perfil já existe. Tente fazer login novamente.');
+            } else if (error.code === '42501' || error.message?.includes('permission denied') || error.message?.includes('403')) {
+                throw new Error('Sem permissão para criar perfil. Verifique as políticas RLS no Supabase.');
+            } else if (error.message?.includes('406') || error.code === 'PGRST116') {
+                throw new Error('Formato de requisição inválido. Verifique a estrutura da tabela profiles.');
+            } else if (error.message) {
+                throw new Error(`Erro ao criar perfil: ${error.message}`);
+            }
             throw error;
         }
         
@@ -546,10 +744,10 @@ async function criarPersonagem() {
                 // Inicializa app
                 inicializarApp();
                 
-                // Navega para Dashboard após animação
+                // Navega para página de Missões após animação
                 setTimeout(() => {
                     if (navigationSystem) {
-                        navigationSystem.navigateTo('stats');
+                        navigationSystem.navigateTo('missions');
                     }
                 }, 600);
             }, 500);
@@ -573,7 +771,8 @@ async function criarPersonagem() {
  * Verifica autenticação e perfil
  */
 async function verificarAutenticacao() {
-    if (!supabaseClient) {
+    const client = getSupabaseClient();
+    if (!client) {
         console.warn('Supabase não configurado - mostrando app sem autenticação');
         const loginScreen = document.getElementById('loginScreen');
         const appContainer = document.getElementById('app-container');
@@ -585,7 +784,7 @@ async function verificarAutenticacao() {
     
     try {
         // Verifica sessão atual
-        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+        const { data: { session }, error: sessionError } = await client.auth.getSession();
         
         if (sessionError) {
             throw sessionError;
@@ -593,6 +792,7 @@ async function verificarAutenticacao() {
         
         // Se não houver sessão, mostra tela de login
         if (!session) {
+            window.currentUser = null;
             const loginScreen = document.getElementById('loginScreen');
             const appContainer = document.getElementById('app-container');
             if (loginScreen) loginScreen.classList.remove('hidden');
@@ -600,16 +800,52 @@ async function verificarAutenticacao() {
             return;
         }
         
-        // Verifica se existe perfil
-        const { data: profile, error: profileError } = await supabaseClient
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+        // Atualiza variável global com o objeto completo do usuário
+        if (session.user) {
+            window.currentUser = session.user;
+            console.log('✅ currentUser atualizado:', window.currentUser.id, window.currentUser.email);
+        }
         
+        // Verifica se existe perfil
+        // Usa maybeSingle() para evitar erro quando não há perfil
+        let profile = null;
+        let profileError = null;
+        
+        try {
+            const result = await client
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle();
+            
+            profile = result.data;
+            profileError = result.error;
+        } catch (err) {
+            // Se der erro 406, pode ser problema de formato - tenta com colunas específicas
+            if (err.message?.includes('406') || err.code === 'PGRST301') {
+                console.warn('Erro 406 ao buscar perfil, tentando com colunas específicas...');
+                try {
+                    const retryResult = await client
+                        .from('profiles')
+                        .select('id, nome_usuario, classe, nivel, xp, energia_total, foco_total, modo_escudo, config_alerta_agua, updated_at')
+                        .eq('id', session.user.id)
+                        .maybeSingle();
+                    
+                    profile = retryResult.data;
+                    profileError = retryResult.error;
+                } catch (retryErr) {
+                    console.error('Erro ao buscar perfil (retry):', retryErr);
+                    profileError = retryErr;
+                }
+            } else {
+                profileError = err;
+            }
+        }
+        
+        // Se houver erro e não for "nenhuma linha encontrada", lança o erro
         if (profileError && profileError.code !== 'PGRST116') {
-            // PGRST116 = nenhuma linha encontrada (normal se não tiver perfil)
-            throw profileError;
+            console.error('Erro ao buscar perfil:', profileError);
+            // Não lança o erro, apenas continua sem perfil (vai mostrar tela de criação)
         }
         
         // Se não tiver perfil, mostra tela de criação
@@ -624,7 +860,7 @@ async function verificarAutenticacao() {
             return;
         }
         
-        // Tudo OK - mostra app
+        // Tudo OK - mostra app e navega para missões
         const loginScreen = document.getElementById('loginScreen');
         const creationScreen = document.getElementById('characterCreationScreen');
         const appContainer = document.getElementById('app-container');
@@ -639,6 +875,13 @@ async function verificarAutenticacao() {
         // Inicializa app
         inicializarApp();
         
+        // Navega para página de Missões quando tiver personagem
+        setTimeout(() => {
+            if (window.navigationSystem) {
+                window.navigationSystem.navigateTo('missions');
+            }
+        }, 100);
+        
     } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
         // Em caso de erro, mostra tela de login
@@ -647,6 +890,9 @@ async function verificarAutenticacao() {
         if (loginScreen) loginScreen.classList.remove('hidden');
         if (appContainer) appContainer.classList.add('hidden');
     }
+    
+    // Expõe globalmente para o main.jsx usar
+    window.verificarAutenticacao = verificarAutenticacao;
 }
 
 /**
@@ -659,8 +905,14 @@ function configurarAuthListener() {
         console.log('Auth state changed:', event, session?.user?.email);
         
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            // Atualiza a variável global currentUser com o objeto completo
+            if (session && session.user) {
+                window.currentUser = session.user;
+                console.log('✅ currentUser atualizado via onAuthStateChange:', window.currentUser.id);
+            }
             await verificarAutenticacao();
         } else if (event === 'SIGNED_OUT') {
+            window.currentUser = null;
             const loginScreen = document.getElementById('loginScreen');
             const appContainer = document.getElementById('app-container');
             if (loginScreen) loginScreen.classList.remove('hidden');
@@ -673,19 +925,20 @@ function configurarAuthListener() {
  * Carrega perfil do usuário do Supabase
  */
 async function carregarPerfilUsuario() {
-    if (!supabaseClient) {
+    const client = getSupabaseClient();
+    if (!client) {
         window.userProfile = null;
         return;
     }
     
     try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
+        const { data: { user } } = await client.auth.getUser();
         if (!user) {
             window.userProfile = null;
             return;
         }
         
-        const { data: profile, error } = await supabaseClient
+        const { data: profile, error } = await client
             .from('profiles')
             .select('*')
             .eq('id', user.id)
@@ -699,6 +952,10 @@ async function carregarPerfilUsuario() {
         
         window.userProfile = profile;
         console.log('%c👤 Perfil carregado:', 'color: #10b981; font-weight: bold;', profile);
+        
+        // Atualiza as páginas se estiverem visíveis
+        atualizarPaginaPerfil();
+        atualizarPaginaStats();
     } catch (error) {
         console.error('Erro ao carregar perfil:', error);
         window.userProfile = null;
@@ -732,9 +989,227 @@ function configurarInputNome() {
 }
 
 // Torna funções acessíveis globalmente
+/**
+ * Sincroniza realidade - cria personagem e navega para dashboard
+ */
+async function sincronizarRealidade() {
+    const nameInput = document.getElementById('characterName');
+    const finalizarBtn = document.getElementById('btn-finalizar-personagem');
+    const messageEl = document.getElementById('characterCreationMessage');
+    
+    // Obtém o cliente Supabase
+    const client = getSupabaseClient();
+    
+    if (!nameInput || !finalizarBtn || !client) {
+        if (!client) {
+            console.error('Supabase não configurado');
+            if (messageEl) {
+                messageEl.textContent = 'Aguarde o Supabase ser inicializado...';
+                messageEl.className = 'text-center text-sm text-yellow-400';
+                messageEl.classList.remove('hidden');
+            }
+        }
+        return;
+    }
+    
+    const nome = nameInput.value.trim();
+    
+    // Obtém altura e peso do formulário
+    const heightInput = document.getElementById('characterHeight');
+    const weightInput = document.getElementById('characterWeight');
+    const altura = heightInput ? parseFloat(heightInput.value) : null;
+    const peso = weightInput ? parseFloat(weightInput.value) : null;
+    
+    if (!nome || nome.length < 2) {
+        if (messageEl) {
+            messageEl.textContent = 'O nome deve ter pelo menos 2 caracteres';
+            messageEl.className = 'text-center text-sm text-red-400';
+            messageEl.classList.remove('hidden');
+        }
+        return;
+    }
+    
+    if (!classeSelecionada) {
+        if (messageEl) {
+            messageEl.textContent = 'Selecione uma classe';
+            messageEl.className = 'text-center text-sm text-red-400';
+            messageEl.classList.remove('hidden');
+        }
+        return;
+    }
+    
+    // Valida altura e peso
+    if (!altura || altura < 100 || altura > 250) {
+        if (messageEl) {
+            messageEl.textContent = 'Altura deve estar entre 100 e 250 cm';
+            messageEl.className = 'text-center text-sm text-red-400';
+            messageEl.classList.remove('hidden');
+        }
+        return;
+    }
+    
+    if (!peso || peso < 30 || peso > 300) {
+        if (messageEl) {
+            messageEl.textContent = 'Peso deve estar entre 30 e 300 kg';
+            messageEl.className = 'text-center text-sm text-red-400';
+            messageEl.classList.remove('hidden');
+        }
+        return;
+    }
+    
+    // Desabilita botão
+    finalizarBtn.disabled = true;
+    finalizarBtn.textContent = 'Sincronizando...';
+    if (messageEl) messageEl.classList.add('hidden');
+    
+    try {
+        // Verifica se há sessão ativa primeiro
+        const { data: { session }, error: sessionError } = await client.auth.getSession();
+        
+        if (sessionError) {
+            console.error('Erro ao obter sessão:', sessionError);
+            throw new Error('Erro ao verificar autenticação. Tente fazer login novamente.');
+        }
+        
+        if (!session) {
+            console.error('Nenhuma sessão encontrada');
+            throw new Error('Usuário não autenticado. Faça login novamente.');
+        }
+        
+        const user = session.user;
+        
+        if (!user || !user.id) {
+            console.error('Usuário não encontrado na sessão:', session);
+            throw new Error('Usuário não encontrado na sessão.');
+        }
+        
+        // Atualiza variável global com o objeto completo do usuário
+        window.currentUser = user;
+        
+        console.log('✅ Usuário autenticado:', user.id, user.email);
+        
+        // Cria perfil com ID do usuário logado
+        const { data: profileData, error } = await client
+            .from('profiles')
+            .insert([{
+                id: user.id,
+                nome_usuario: nome,
+                classe: classeSelecionada,
+                nivel: 1,
+                xp: 0,
+                energia_total: 0,
+                foco_total: 0,
+                modo_escudo: 'desativado',
+                config_alerta_agua: 120,
+                altura_cm: altura,
+                altura: altura, // Também salva como 'altura' para compatibilidade
+                peso_kg: peso,
+                peso: peso, // Também salva como 'peso' para compatibilidade
+                updated_at: new Date().toISOString()
+            }])
+            .select();
+        
+        if (error) {
+            console.error('Erro ao criar perfil:', error);
+            // Mensagens mais específicas para erros comuns
+            if (error.code === '23505') {
+                throw new Error('Este perfil já existe. Tente fazer login novamente.');
+            } else if (error.code === '42501' || error.message?.includes('permission denied') || error.message?.includes('403')) {
+                throw new Error('Sem permissão para criar perfil. Verifique as políticas RLS no Supabase.');
+            } else if (error.message?.includes('406') || error.code === 'PGRST116') {
+                throw new Error('Formato de requisição inválido. Verifique a estrutura da tabela profiles.');
+            } else if (error.message) {
+                throw new Error(`Erro ao criar perfil: ${error.message}`);
+            }
+            throw error;
+        }
+        
+        if (profileData && profileData.length > 0) {
+            console.log('%c✨ Personagem criado com sucesso!', 'color: #10b981; font-weight: bold;');
+            console.log('%c👤 ID do usuário:', 'color: #6366f1; font-weight: bold;', user.id);
+            console.log('%c🎮 Classe:', 'color: #6366f1; font-weight: bold;', classeSelecionada);
+            console.log('%c📊 Perfil criado:', 'color: #10b981; font-weight: bold;', profileData[0]);
+        } else {
+            throw new Error('Perfil não foi criado corretamente');
+        }
+        
+        // Carrega perfil do usuário
+        await carregarPerfilUsuario();
+        
+        // Dispara confetti
+        if (typeof confetti !== 'undefined') {
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#fbbf24', '#fcd34d', '#fde047', '#fef08a']
+            });
+        }
+        
+        // Esconde tela de criação
+        const creationScreen = document.getElementById('characterCreationScreen');
+        if (creationScreen) {
+            creationScreen.style.transition = 'opacity 0.5s ease-out';
+            creationScreen.style.opacity = '0';
+            
+            setTimeout(() => {
+                creationScreen.classList.add('hidden');
+                
+                // Mostra app com fade-in
+                const appContainer = document.getElementById('app-container');
+                if (appContainer) {
+                    appContainer.classList.remove('hidden');
+                    appContainer.style.opacity = '0';
+                    appContainer.style.transition = 'opacity 0.5s ease-in';
+                    
+                    // Força reflow
+                    void appContainer.offsetWidth;
+                    
+                    setTimeout(() => {
+                        appContainer.style.opacity = '1';
+                    }, 50);
+                }
+                
+                // Inicializa app
+                inicializarApp();
+                
+                // Navega para Dashboard (missões) após animação
+                setTimeout(() => {
+                    if (window.navigationSystem) {
+                        window.navigationSystem.navigateTo('missions');
+                    }
+                }, 600);
+            }, 500);
+        } else {
+            // Fallback se não houver animação
+            const appContainer = document.getElementById('app-container');
+            if (appContainer) appContainer.classList.remove('hidden');
+            inicializarApp();
+            
+            // Navega para Dashboard
+            setTimeout(() => {
+                if (window.navigationSystem) {
+                    window.navigationSystem.navigateTo('missions');
+                }
+            }, 100);
+        }
+        
+    } catch (error) {
+        console.error('Erro ao sincronizar realidade:', error);
+        if (messageEl) {
+            messageEl.textContent = error.message || 'Erro ao criar personagem. Tente novamente.';
+            messageEl.className = 'text-center text-sm text-red-400';
+            messageEl.classList.remove('hidden');
+        }
+        finalizarBtn.disabled = false;
+        finalizarBtn.textContent = 'Sincronizar Realidade';
+    }
+}
+
 window.enviarMagicLink = enviarMagicLink;
 window.selecionarClasse = selecionarClasse;
 window.criarPersonagem = criarPersonagem;
+window.sincronizarRealidade = sincronizarRealidade;
 
 // ============================================
 // SISTEMA DE CELEBRAÇÃO COM CONFETES
@@ -1642,10 +2117,11 @@ class NavigationSystem {
             'missions': 'missions',
             'shop': 'inventory',
             'board': 'profile',
-            'dashboard': 'stats',
+            'dashboard': 'dashboard',
             'inventory': 'inventory',
             'stats': 'stats',
-            'profile': 'profile'
+            'profile': 'profile',
+            'alquimia': 'dashboard' // Alquimia agora está no Dashboard
         };
         
         const targetPage = pageMap[page] || page;
@@ -1669,28 +2145,62 @@ class NavigationSystem {
 
         // Atualiza páginas (esconde/mostra)
         const pages = {
+            'dashboard': document.getElementById('dashboard-page'),
             'missions': document.getElementById('missions-page'),
             'inventory': document.getElementById('inventory-page'),
             'stats': document.getElementById('stats-page'),
-            'profile': document.getElementById('profile-page')
+            'profile': document.getElementById('profile-page'),
+            'alquimia': document.getElementById('alquimia-page') // Mantido para compatibilidade
         };
+        
+        // Seções especiais
+        const manutencaoSection = document.getElementById('manutencao-corporal-section');
+        const instantActionsSection = document.getElementById('instant-actions-section');
 
         Object.keys(pages).forEach(pageKey => {
             const pageEl = pages[pageKey];
             if (pageEl) {
                 if (pageKey === targetPage) {
-                    pageEl.classList.remove('page-hidden');
+                    pageEl.classList.remove('hidden');
                     pageEl.classList.add('page-visible');
+                    
+                    // Mostra seção de Manutenção Corporal na página de missões
+                    if (pageKey === 'missions' && manutencaoSection) {
+                        manutencaoSection.classList.remove('hidden');
+                    } else if (manutencaoSection) {
+                        manutencaoSection.classList.add('hidden');
+                    }
+                    
+                    // Esconde seção de ações instantâneas antiga (os widgets agora estão fixos na página de missões)
+                    if (instantActionsSection) {
+                        instantActionsSection.classList.add('hidden');
+                    }
+                    
+                    // Atualiza perfil quando navegar para a página
+                    if (pageKey === 'profile') {
+                        atualizarPaginaPerfil();
+                    }
+                    
+                    // Carrega medicamentos quando navegar para dashboard
+                    if (pageKey === 'dashboard') {
+                        carregarMedicamentos();
+                    }
+                    
+                    // Carrega medicamentos quando navegar para alquimia (compatibilidade)
+                    if (pageKey === 'alquimia') {
+                        carregarMedicamentos();
+                    }
                 } else {
+                    pageEl.classList.add('hidden');
                     pageEl.classList.remove('page-visible');
-                    pageEl.classList.add('page-hidden');
                 }
             }
         });
 
         // Mostra/esconde botão flutuante
         // Botão FAB agora é usado para adicionar missões
-        // const addBtn = document.getElementById('addMissionBtn');
+        // Nota: addMissionBtn pode não existir, então verificamos antes de usar
+        const addBtn = document.getElementById('addMissionBtn');
         if (addBtn) {
             if (targetPage === 'profile') {
                 addBtn.classList.remove('hidden');
@@ -1713,6 +2223,8 @@ class NavigationSystem {
             window.dashboardSystem.loadDashboard();
             // Atualiza indicador de escudo ao navegar para dashboard
             atualizarIndicadorEscudo();
+            // Atualiza dados corporais na página de estatísticas
+            atualizarPaginaStats();
         }
         
         // Dispara vibração ao trocar de página (mobile)
@@ -2941,6 +3453,10 @@ function closeAddMissionModal() {
     }
 }
 
+// Expõe funções globalmente para uso no HTML
+window.openAddMissionModal = openAddMissionModal;
+window.closeAddMissionModal = closeAddMissionModal;
+
 // ============================================
 // FUNÇÕES DE INTEGRAÇÃO COM SUPABASE
 // ============================================
@@ -2968,8 +3484,16 @@ async function saveActivity(taskName, score) {
         return null;
     }
 
+    // Verifica autenticação antes de salvar
+    const userId = window.currentUser?.id || await getCurrentUserIdAsync();
+    if (!userId) {
+        console.warn('Usuário não autenticado, não será possível salvar atividade no Supabase');
+        return null;
+    }
+
     try {
         const atividade = {
+            user_id: userId,
             nome_tarefa: taskName,
             pontuacao: score,
             data_completada: new Date().toISOString(),
@@ -3039,8 +3563,16 @@ async function completarMissao(missionId, mission, source = 'daily') {
         return;
     }
 
+    // Verifica autenticação antes de salvar
+    const userId = window.currentUser?.id || await getCurrentUserIdAsync();
+    if (!userId) {
+        console.warn('Usuário não autenticado, não será possível salvar missão no Supabase');
+        return;
+    }
+
     try {
         const atividade = {
+            user_id: userId,
             missao_id: missionId,
             nome_missao: mission.title || mission.name,
             tipo_missao: mission.type || 'checklist',
@@ -3083,10 +3615,18 @@ async function carregarProgressoMensal() {
         dataInicio.setDate(dataInicio.getDate() - 30);
         const dataInicioISO = dataInicio.toISOString();
 
-        // Busca todas as atividades dos últimos 30 dias
+        // Verifica autenticação antes de buscar
+        const userId = window.currentUser?.id || await getCurrentUserIdAsync();
+        if (!userId) {
+            console.warn('Usuário não autenticado, não será possível carregar progresso do Supabase');
+            return [];
+        }
+        
+        // Busca todas as atividades dos últimos 30 dias do usuário atual
         const { data, error } = await supabaseClient
             .from('historico_atividades')
             .select('*')
+            .eq('user_id', userId)
             .gte('data_completada', dataInicioISO)
             .order('data_completada', { ascending: true });
 
@@ -3125,36 +3665,37 @@ window.saveActivity = saveActivity;
 // REGISTRO DO SERVICE WORKER (PWA)
 // ============================================
 
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js')
-            .then((registration) => {
-                console.log('%c✅ Service Worker registrado com sucesso!', 'color: #10b981; font-weight: bold;');
-                console.log('📱 PWA instalável:', registration.scope);
-                
-                // Verifica se há atualizações
-                registration.addEventListener('updatefound', () => {
-                    const newWorker = registration.installing;
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            console.log('%c🔄 Nova versão disponível!', 'color: #f59e0b; font-weight: bold;');
-                            // Pode mostrar notificação para o usuário atualizar
-                        }
-                    });
-                });
-            })
-            .catch((error) => {
-                console.warn('%c⚠️ Erro ao registrar Service Worker:', 'color: #f59e0b; font-weight: bold;', error);
-            });
-        
-        // Escuta mensagens do service worker
-        navigator.serviceWorker.addEventListener('message', (event) => {
-            if (event.data && event.data.type === 'SW_READY') {
-                console.log('%c✅ Service Worker pronto!', 'color: #10b981; font-weight: bold;');
-            }
-        });
-    });
-}
+// Service Worker desabilitado - arquivo não existe
+// if ('serviceWorker' in navigator) {
+//     window.addEventListener('load', () => {
+//         navigator.serviceWorker.register('/service-worker.js')
+//             .then((registration) => {
+//                 console.log('%c✅ Service Worker registrado com sucesso!', 'color: #10b981; font-weight: bold;');
+//                 console.log('📱 PWA instalável:', registration.scope);
+//                 
+//                 // Verifica se há atualizações
+//                 registration.addEventListener('updatefound', () => {
+//                     const newWorker = registration.installing;
+//                     newWorker.addEventListener('statechange', () => {
+//                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+//                             console.log('%c🔄 Nova versão disponível!', 'color: #f59e0b; font-weight: bold;');
+//                             // Pode mostrar notificação para o usuário atualizar
+//                         }
+//                     });
+//                 });
+//             })
+//             .catch((error) => {
+//                 console.warn('%c⚠️ Erro ao registrar Service Worker:', 'color: #f59e0b; font-weight: bold;', error);
+//             });
+//         
+//         // Escuta mensagens do service worker
+//         navigator.serviceWorker.addEventListener('message', (event) => {
+//             if (event.data && event.data.type === 'SW_READY') {
+//                 console.log('%c✅ Service Worker pronto!', 'color: #10b981; font-weight: bold;');
+//             }
+//         });
+//     });
+// }
 
 // Função para cachear missões para uso offline
 function cachearMissoesParaOffline(missionsData) {
@@ -3215,10 +3756,50 @@ let focusTimerStartTime = null;
  * Adiciona 250ml de água e atualiza o widget
  */
 async function addWaterInstant() {
-    waterAmount = Math.min(waterAmount + 250, waterTarget);
+    const waterAmountAnterior = waterAmount;
+    waterAmount = waterAmount + 250; // Permite passar de 100% para continuar preenchendo
     
     // Atualiza a UI
     updateWaterWidget();
+    
+    // Verifica se atingiu ou passou de 100% pela primeira vez
+    const percentage = Math.round((waterAmount / waterTarget) * 100);
+    const percentageAnterior = Math.round((waterAmountAnterior / waterTarget) * 100);
+    
+    if (percentage >= 100 && percentageAnterior < 100) {
+        // Atingiu 100% pela primeira vez
+        // Dispara confetti
+        if (typeof confetti !== 'undefined') {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#fbbf24', '#fcd34d', '#fde047', '#fef08a', '#fef3c7']
+            });
+        }
+        
+        // Exibe mensagem
+        const waterWidget = document.getElementById('waterWidget');
+        if (waterWidget) {
+            // Cria ou atualiza mensagem de sucesso
+            let successMsg = document.getElementById('waterSuccessMessage');
+            if (!successMsg) {
+                successMsg = document.createElement('div');
+                successMsg.id = 'waterSuccessMessage';
+                successMsg.className = 'text-center mt-2 text-yellow-400 font-semibold text-sm';
+                waterWidget.appendChild(successMsg);
+            }
+            successMsg.textContent = '✨ Sistema Hidratado. Estabilidade Máxima Alcançada!';
+            successMsg.classList.remove('hidden');
+            
+            // Remove mensagem após 5 segundos
+            setTimeout(() => {
+                if (successMsg) {
+                    successMsg.classList.add('hidden');
+                }
+            }, 5000);
+        }
+    }
     
     // Animação de onda
     const wave = document.getElementById('waterWave');
@@ -3235,20 +3816,47 @@ async function addWaterInstant() {
     // Salva no Supabase com objeto específico
     if (supabaseClient) {
         try {
+            // Usa variável global currentUser.id (garante RLS do Supabase)
+            const userId = window.currentUser?.id;
+            if (!userId) {
+                console.warn('Usuário não autenticado, não será possível salvar água no Supabase');
+                return;
+            }
+            
+            // Cria objeto com campos corretos da tabela atividades
             const waterLog = {
-                activity: 'water_intake',
-                amount: 250,
-                unit: 'ml',
-                timestamp: new Date().toISOString()
+                user_id: userId,
+                nome_tarefa: 'Beber Água',
+                pontuacao: 5, // Pontuação por copo de água
+                categoria: 'Saúde',
+                regiao: 'sa-east-1',
+                data_completada: new Date().toISOString(),
+                dados_extras: {
+                    activity: 'water_intake',
+                    amount: 250,
+                    unit: 'ml',
+                    timestamp: new Date().toISOString()
+                }
             };
             
-            // Envia o objeto específico para a tabela atividades
-            await supabaseClient
+            // Envia para a tabela atividades
+            const { data: insertData, error: insertError } = await supabaseClient
                 .from('atividades')
-                .insert([waterLog]);
+                .insert([waterLog])
+                .select();
             
-            console.log('%c💧 Registro de água salvo no Supabase', 'color: #3b82f6; font-weight: bold;');
-            console.log('%c📊 Objeto enviado:', 'color: #3b82f6; font-weight: bold;', waterLog);
+            if (insertError) {
+                console.error('❌ Erro ao inserir registro de água:', insertError);
+                console.error('📋 Dados que tentaram ser inseridos:', waterLog);
+                throw insertError;
+            }
+            
+            if (insertData && insertData.length > 0) {
+                console.log('%c✅ Registro de água inserido com sucesso:', 'color: #10b981; font-weight: bold;', insertData[0]);
+                console.log('%c📊 Objeto enviado:', 'color: #3b82f6; font-weight: bold;', waterLog);
+            } else {
+                console.warn('⚠️ Nenhum dado retornado após inserção (mas sem erro)');
+            }
         } catch (error) {
             console.error('Erro ao salvar água no Supabase:', error);
             console.error('Detalhes:', error.message);
@@ -3278,6 +3886,11 @@ async function addWaterInstant() {
  * Atualiza o widget de água
  */
 function updateWaterWidget() {
+    // Garante que waterAmount não seja negativo ou undefined
+    if (!waterAmount || waterAmount < 0) {
+        waterAmount = 0;
+    }
+    
     const percentage = Math.round((waterAmount / waterTarget) * 100);
     const percentageEl = document.getElementById('waterPercentage');
     const amountEl = document.getElementById('waterAmount');
@@ -3288,22 +3901,197 @@ function updateWaterWidget() {
     }
     
     if (amountEl) {
-        amountEl.textContent = waterAmount;
+        amountEl.textContent = `${waterAmount}ml / ${waterTarget}ml`;
     }
     
+    // Atualiza estado visual do widget compacto
+    atualizarEstadoWidgets();
+    
     if (circleEl) {
-        const circumference = 2 * Math.PI * 35;
-        const offset = circumference - (percentage / 100) * circumference;
+        // CORREÇÃO: O raio no HTML é 28, não 35!
+        const radius = 28;
+        const circumference = 2 * Math.PI * radius; // ≈ 175.9
+        
+        // Se passou de 100%, calcula o progresso extra (começa a preencher novamente)
+        let displayPercentage = percentage;
+        if (percentage > 100) {
+            // Calcula quantas vezes passou de 100% e o resto
+            displayPercentage = percentage % 100;
+            // Se for exatamente múltiplo de 100, mostra 100%
+            if (displayPercentage === 0) {
+                displayPercentage = 100;
+            }
+        }
+        
+        // Calcula o offset: quando offset = 0, o círculo está 100% preenchido
+        // Quando offset = circumference, o círculo está 0% preenchido
+        const offset = circumference - (displayPercentage / 100) * circumference;
+        
+        // Aplica transição suave e atualiza o offset
+        circleEl.style.transition = 'stroke-dashoffset 0.5s ease-out, stroke 0.3s ease-out';
         circleEl.style.strokeDashoffset = offset;
+        
+        // Muda cor para dourado se atingiu ou passou de 100%
+        if (percentage >= 100) {
+            circleEl.style.stroke = '#fbbf24'; // Dourado brilhante
+        } else {
+            circleEl.style.stroke = '#3b82f6'; // Azul padrão
+        }
+        
+        // Log para debug
+        console.log(`💧 Atualizando barra: ${waterAmount}ml (${percentage}%) - offset: ${offset.toFixed(2)}`);
+    }
+    
+    // Atualiza também a barra linear se existir
+    atualizarVisualAgua(percentage);
+}
+
+/**
+ * Atualiza a barra linear de água (se existir no HTML)
+ * @param {number} porcentagem - Porcentagem de 0 a 100+
+ */
+function atualizarBarraVisual(porcentagem) {
+    const barra = document.getElementById('barra-azul-fill'); // Certifique-se de que o ID é este
+    if (barra) {
+        // Forçamos o estilo direto no elemento para o navegador ignorar o Purge do Tailwind
+        barra.style.width = `${Math.min(porcentagem, 100)}%`;
+        
+        // Troca de cor: Azul para Dourado
+        if (porcentagem >= 100) {
+            barra.style.backgroundColor = '#fbbf24'; // Dourado
+            barra.style.boxShadow = '0 0 15px #fbbf24';
+        } else {
+            barra.style.backgroundColor = '#3b82f6'; // Azul
+            barra.style.boxShadow = '0 0 10px #3b82f6';
+        }
+    }
+}
+
+// Mantém compatibilidade com nome antigo
+function atualizarVisualAgua(porcentagem) {
+    atualizarBarraVisual(porcentagem);
+}
+
+/**
+ * Busca progresso de água de hoje no Supabase
+ * Tenta primeiro em 'atividades', depois em 'historico_atividades' como fallback
+ */
+async function buscarProgressoAguaHoje() {
+    const client = getSupabaseClient();
+    if (!client || !window.currentUser?.id) {
+        return 0;
+    }
+    
+    try {
+        // Busca atividades de água de hoje usando filtro de data
+        // Usa apenas a data (sem hora) para pegar tudo a partir das 00:00 de hoje
+        const hojeDataString = new Date().toISOString().split('T')[0]; // Formato: YYYY-MM-DD
+        
+        // Tenta primeiro na tabela 'atividades'
+        // Seleciona todos os campos necessários para evitar erro 400
+        const { data, error } = await client
+            .from('atividades')
+            .select('dados_extras, categoria, nome_tarefa, data_completada')
+            .eq('user_id', window.currentUser.id)
+            .eq('categoria', 'Saúde')
+            .eq('nome_tarefa', 'Beber Água')
+            .gte('data_completada', hojeDataString)
+            .order('data_completada', { ascending: false });
+        
+        let totalHoje = 0;
+        
+        // Se não houver erro e houver dados, soma
+        if (!error && data && data.length > 0) {
+            console.log(`📊 Encontrados ${data.length} registros de água de hoje`);
+            
+            data.forEach(registro => {
+                // Verifica se os campos categoria e nome_tarefa estão corretos (validação extra)
+                const categoriaOk = registro.categoria === 'Saúde';
+                const nomeOk = registro.nome_tarefa === 'Beber Água';
+                
+                if (categoriaOk && nomeOk && registro.dados_extras) {
+                    // Tenta acessar amount de diferentes formas (suporta JSONB)
+                    const amount = registro.dados_extras.amount || 
+                                  registro.dados_extras.quantidade;
+                    if (amount && typeof amount === 'number') {
+                        totalHoje += amount;
+                        console.log(`💧 Adicionado ${amount}ml ao total (total: ${totalHoje}ml)`);
+                    }
+                } else {
+                    console.warn('⚠️ Registro ignorado - campos não correspondem:', {
+                        categoria: registro.categoria,
+                        nome_tarefa: registro.nome_tarefa,
+                        esperado: { categoria: 'Saúde', nome_tarefa: 'Beber Água' }
+                    });
+                }
+            });
+            
+            // Se encontrou dados, retorna
+            if (totalHoje > 0) {
+                console.log(`✅ Total de água hoje: ${totalHoje}ml`);
+                return totalHoje;
+            }
+        } else if (error) {
+            console.warn('⚠️ Erro ao buscar progresso de água em atividades:', error);
+            // Continua para o fallback
+        } else {
+            console.log('ℹ️ Nenhum registro de água encontrado em atividades para hoje');
+        }
+        
+        // Fallback: busca em historico_atividades se atividades estiver vazia
+        console.log('Tabela atividades vazia ou sem dados, buscando em historico_atividades...');
+        
+        const { data: historicoData, error: historicoError } = await client
+            .from('historico_atividades')
+            .select('progresso, nome_missao, categoria')
+            .eq('user_id', window.currentUser.id)
+            .gte('data_completada', hojeDataString)
+            .order('data_completada', { ascending: false });
+        
+        if (!historicoError && historicoData && historicoData.length > 0) {
+            historicoData.forEach(registro => {
+                // Verifica se é uma missão de água
+                const nomeMissao = registro.nome_missao?.toLowerCase() || '';
+                const categoria = registro.categoria?.toLowerCase() || '';
+                
+                if ((nomeMissao.includes('água') || nomeMissao.includes('agua') || nomeMissao.includes('hidrata')) ||
+                    (categoria === 'saúde' || categoria === 'saude')) {
+                    
+                    // Tenta extrair quantidade do progresso JSONB
+                    if (registro.progresso) {
+                        const progresso = registro.progresso;
+                        const amount = progresso.amount || 
+                                      progresso.quantidade || 
+                                      progresso.waterAmount ||
+                                      progresso.ml;
+                        if (amount && typeof amount === 'number') {
+                            totalHoje += amount;
+                        }
+                    }
+                }
+            });
+        }
+        
+        return totalHoje;
+    } catch (error) {
+        console.error('Erro ao buscar progresso de água:', error);
+        return 0;
     }
 }
 
 /**
- * Carrega a quantidade de água do localStorage
+ * Carrega a quantidade de água do Supabase (apenas de hoje) ou reseta se necessário
  */
-function loadWaterAmount() {
-    const saved = localStorage.getItem('waterAmount');
-    waterAmount = saved ? parseInt(saved, 10) : 0;
+async function loadWaterAmount() {
+    // Inicializa com 0
+    waterAmount = 0;
+    
+    // Busca progresso de água de hoje diretamente
+    // A função buscarProgressoAguaHoje() já filtra por data de hoje usando .gte()
+    const client = getSupabaseClient();
+    if (client && window.currentUser?.id) {
+        waterAmount = await buscarProgressoAguaHoje();
+    }
     
     // Carrega configurações de alerta
     const savedInterval = localStorage.getItem('waterAlertInterval');
@@ -3316,6 +4104,9 @@ function loadWaterAmount() {
     if (savedLastTime) {
         lastWaterTime = parseInt(savedLastTime, 10);
     }
+    
+    // Atualiza localStorage com o valor correto
+    localStorage.setItem('waterAmount', waterAmount.toString());
     
     updateWaterWidget();
     
@@ -3362,24 +4153,31 @@ async function saveWaterSettings() {
     // Salva no Supabase (perfil do usuário)
     if (supabaseClient) {
         try {
-            // Tenta atualizar ou inserir no perfil do usuário
-            // Assumindo que existe uma tabela 'perfil' ou 'usuarios'
-            // Ajuste conforme sua estrutura de banco
+            // Usa variável global currentUser.id (garante RLS do Supabase)
+            const userId = window.currentUser?.id;
+            if (!userId) {
+                console.warn('Usuário não autenticado, não será possível salvar configuração de água no Supabase');
+                return;
+            }
+            
+            // Tenta atualizar ou inserir no perfil do usuário (tabela profiles usa 'id', não 'user_id')
             const { error } = await supabaseClient
-                .from('perfil')
+                .from('profiles')
                 .upsert({
-                    intervalo_alerta_agua: waterAlertInterval,
+                    id: userId,
+                    config_alerta_agua: waterAlertInterval,
                     updated_at: new Date().toISOString()
                 }, {
-                    onConflict: 'user_id' // Ajuste conforme sua chave primária
+                    onConflict: 'id'
                 });
             
             if (error) {
-                console.warn('Erro ao salvar no Supabase (pode não existir tabela perfil):', error);
+                console.warn('Erro ao salvar no Supabase (pode não existir campo config_alerta_agua):', error);
                 // Tenta salvar em atividades como fallback
                 await supabaseClient
                     .from('atividades')
                     .insert([{
+                        user_id: userId,
                         nome_tarefa: 'Configuração - Intervalo Alerta Água',
                         pontuacao: 0,
                         categoria: 'Configuração',
@@ -3488,11 +4286,29 @@ function checkWaterAlert() {
  * Expande o timer de foco
  */
 function expandFocusTimer() {
+    // Tenta abrir modal primeiro
+    const modal = document.getElementById('limpezaTimerModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        // Sincroniza estado
+        const collapsed = document.getElementById('focusTimerCollapsed');
+        const expanded = document.getElementById('focusTimerExpanded');
+        if (collapsed) collapsed.classList.add('hidden');
+        if (expanded) expanded.classList.remove('hidden');
+        atualizarEstadoWidgets();
+        startFocusTimer();
+        return;
+    }
+    
+    // Fallback para widget antigo
     const collapsed = document.getElementById('focusTimerCollapsed');
     const expanded = document.getElementById('focusTimerExpanded');
     
     if (collapsed) collapsed.classList.add('hidden');
     if (expanded) expanded.classList.remove('hidden');
+    
+    // Atualiza status-bar
+    atualizarEstadoWidgets();
     
     // Inicia o timer automaticamente
     startFocusTimer();
@@ -3507,6 +4323,9 @@ function collapseFocusTimer() {
     
     if (collapsed) collapsed.classList.remove('hidden');
     if (expanded) expanded.classList.add('hidden');
+    
+    // Atualiza status-bar
+    atualizarEstadoWidgets();
     
     // Pausa o timer
     pauseFocusTimer();
@@ -3524,8 +4343,12 @@ function startFocusTimer() {
     // Atualiza botões
     const pauseBtn = document.getElementById('focusPauseBtn');
     const resumeBtn = document.getElementById('focusResumeBtn');
+    const pauseBtnModal = document.getElementById('focusPauseBtn-modal');
+    const resumeBtnModal = document.getElementById('focusResumeBtn-modal');
     if (pauseBtn) pauseBtn.classList.remove('hidden');
     if (resumeBtn) resumeBtn.classList.add('hidden');
+    if (pauseBtnModal) pauseBtnModal.classList.remove('hidden');
+    if (resumeBtnModal) resumeBtnModal.classList.add('hidden');
     
     focusTimerInterval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - focusTimerStartTime) / 1000);
@@ -3556,8 +4379,12 @@ function pauseFocusTimer() {
     // Atualiza botões
     const pauseBtn = document.getElementById('focusPauseBtn');
     const resumeBtn = document.getElementById('focusResumeBtn');
+    const pauseBtnModal = document.getElementById('focusPauseBtn-modal');
+    const resumeBtnModal = document.getElementById('focusResumeBtn-modal');
     if (pauseBtn) pauseBtn.classList.add('hidden');
     if (resumeBtn) resumeBtn.classList.remove('hidden');
+    if (pauseBtnModal) pauseBtnModal.classList.add('hidden');
+    if (resumeBtnModal) resumeBtnModal.classList.remove('hidden');
 }
 
 /**
@@ -3589,9 +4416,17 @@ async function finishFocusTimer() {
     // Salva no Supabase
     if (supabaseClient) {
         try {
+            // Usa variável global currentUser.id (garante RLS do Supabase)
+            const userId = window.currentUser?.id;
+            if (!userId) {
+                console.warn('Usuário não autenticado, não será possível salvar limpeza no Supabase');
+                return;
+            }
+            
             await supabaseClient
                 .from('atividades')
                 .insert([{
+                    user_id: userId,
                     nome_tarefa: 'Organizar a casa (10 min)',
                     pontuacao: 15,
                     categoria: 'Ordem',
@@ -3631,16 +4466,43 @@ async function finishFocusTimer() {
  */
 function updateFocusTimerDisplay() {
     const display = document.getElementById('focusTimerDisplay');
+    const displayModal = document.getElementById('focusTimerDisplay-modal');
+    const minutes = Math.floor(focusTimerRemaining / 60);
+    const seconds = focusTimerRemaining % 60;
+    const tempoFormatado = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    
     if (display) {
-        const minutes = Math.floor(focusTimerRemaining / 60);
-        const seconds = focusTimerRemaining % 60;
-        display.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        display.textContent = tempoFormatado;
+    }
+    if (displayModal) {
+        displayModal.textContent = tempoFormatado;
     }
 }
 
 // ============================================
 // MENU DE AÇÕES RÁPIDAS (FAB) E MODO AVENTURA
 // ============================================
+
+/**
+ * Atualiza o menu FAB baseado no estado do escudo
+ */
+function atualizarMenuFABEscudo() {
+    const fabEscudoItem = document.getElementById('fabEscudoCompromisso');
+    const fabEscudoLabel = document.getElementById('fabEscudoLabel');
+    const isEscudoAtivo = document.body.classList.contains('escudo-compromisso');
+    
+    if (fabEscudoItem && fabEscudoLabel) {
+        if (isEscudoAtivo) {
+            // Escudo ativo: mostra "Desativar Escudo" e adiciona pulsação
+            fabEscudoLabel.textContent = 'Desativar Escudo';
+            fabEscudoItem.classList.add('escudo-ativo-pulsante');
+        } else {
+            // Escudo inativo: mostra "Escudo de Compromisso" e remove pulsação
+            fabEscudoLabel.textContent = 'Escudo de Compromisso';
+            fabEscudoItem.classList.remove('escudo-ativo-pulsante');
+        }
+    }
+}
 
 /**
  * Abre/fecha o menu FAB
@@ -3652,8 +4514,20 @@ function toggleFAB() {
     
     if (!fabMenu || !fabMainBtn) return;
     
+    // Atualiza o menu do escudo antes de abrir
+    atualizarMenuFABEscudo();
+    
+    // Toggle do menu usando hidden
+    fabMenu.classList.toggle('hidden');
     fabMenuAberto = !fabMenuAberto;
     
+    // Animação de feedback visual no botão (scale-110)
+    fabMainBtn.style.transform = 'scale(1.1)';
+    setTimeout(() => {
+        fabMainBtn.style.transform = '';
+    }, 150);
+    
+    // Mantém classes active para compatibilidade
     if (fabMenuAberto) {
         fabMenu.classList.add('active');
         if (modoEscudoAtivo === 'desativado') {
@@ -3795,22 +4669,31 @@ async function toggleModoAventura() {
     // Salva no Supabase (perfil do usuário)
     if (supabaseClient) {
         try {
-            // Tenta atualizar/inserir no perfil
+            // Usa variável global currentUser.id (garante RLS do Supabase)
+            const userId = window.currentUser?.id;
+            if (!userId) {
+                console.warn('Usuário não autenticado, não será possível salvar modo aventura no Supabase');
+                return;
+            }
+            
+            // Tenta atualizar/inserir no perfil (tabela profiles usa 'id', não 'user_id')
             const { error } = await supabaseClient
-                .from('perfil')
+                .from('profiles')
                 .upsert({
+                    id: userId,
                     modo_aventura_ativo: modoAventuraAtivo,
                     updated_at: new Date().toISOString()
                 }, {
-                    onConflict: 'user_id' // Ajuste conforme sua chave primária
+                    onConflict: 'id'
                 });
             
             if (error) {
-                console.warn('Erro ao salvar no Supabase (pode não existir tabela perfil):', error);
+                console.warn('Erro ao salvar no Supabase (pode não existir campo modo_aventura_ativo):', error);
                 // Fallback: salva em atividades
                 await supabaseClient
                     .from('atividades')
                     .insert([{
+                        user_id: userId,
                         nome_tarefa: `Modo Aventura ${modoAventuraAtivo ? 'Ativado' : 'Desativado'}`,
                         pontuacao: 0,
                         categoria: 'Configuração',
@@ -3877,17 +4760,19 @@ async function loadModoAventura() {
 // ============================================
 
 /**
- * Ativa Escudo de Compromisso (2 horas, ou 1h30 para Hiperfocado)
+ * Ativa Escudo de Compromisso (2 horas padrão, ou 1h30 para Hiperfocado, ou tempo customizado)
+ * @param {number} [minutosCustomizados] - Minutos customizados (opcional)
  */
-async function ativarEscudoCompromisso() {
+async function ativarEscudoCompromisso(minutosCustomizados = null) {
     // Desativa qualquer escudo anterior
     desativarTodosEscudos();
     
     modoEscudoAtivo = 'compromisso';
     
-    // O Hiperfocado tem escudo de 1h30 (gasta energia mais rápido)
-    let duracaoMinutos = 120; // 2 horas padrão
-    if (window.userProfile && window.userProfile.classe === 'O Hiperfocado') {
+    // Se minutos customizados foram fornecidos, usa eles
+    // Caso contrário, usa padrão: 2 horas (ou 1h30 para Hiperfocado)
+    let duracaoMinutos = minutosCustomizados || 120; // 2 horas padrão
+    if (!minutosCustomizados && window.userProfile && window.userProfile.classe === 'O Hiperfocado') {
         duracaoMinutos = 90; // 1h30 para Hiperfocado
         console.log('%c🎯 Escudo de Compromisso reduzido para 1h30 (Hiperfocado)', 'color: #3b82f6; font-weight: bold;');
     }
@@ -3895,8 +4780,16 @@ async function ativarEscudoCompromisso() {
     escudoCompromissoTempoRestante = duracaoMinutos * 60; // em segundos
     
     const body = document.body;
-    body.classList.add('border-shield-compromisso');
-    body.classList.remove('border-shield-recuperacao', 'modo-recuperacao');
+    const aura = document.getElementById('aura-escudo');
+    
+    // Aplica classe no body para compatibilidade
+    body.classList.add('escudo-compromisso', 'border-shield-compromisso');
+    body.classList.remove('border-shield-recuperacao', 'modo-recuperacao', 'escudo-recuperacao');
+    
+    // Ativa a aura amarela sobreposta
+    if (aura) {
+        aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 aura-amarela';
+    }
     
     // Desativa alertas de água
     if (waterAlertCheckInterval) {
@@ -3916,9 +4809,17 @@ async function ativarEscudoCompromisso() {
     // Salva no Supabase
     if (supabaseClient) {
         try {
+            // Usa variável global currentUser.id (garante RLS do Supabase)
+            const userId = window.currentUser?.id;
+            if (!userId) {
+                console.warn('Usuário não autenticado, não será possível salvar escudo no Supabase');
+                return;
+            }
+            
             const { error } = await supabaseClient
                 .from('profiles')
                 .upsert({
+                    id: userId,
                     modo_escudo: 'compromisso',
                     escudo_expira_em: expiraEm.toISOString(),
                     updated_at: new Date().toISOString()
@@ -3941,8 +4842,106 @@ async function ativarEscudoCompromisso() {
     localStorage.setItem('escudoCompromissoTempoRestante', escudoCompromissoTempoRestante.toString());
     localStorage.setItem('escudoExpiraEm', expiraEm.toISOString());
     
-    // Inicia timer
-    iniciarTimerCompromisso();
+                // Inicia timer (já atualiza cronômetro visual)
+                iniciarTimerCompromisso();
+                
+                // Garante que o cronômetro está visível
+                atualizarCronometroEscudo();
+    
+    // Atualiza menu FAB
+    atualizarMenuFABEscudo();
+}
+
+/**
+ * Alterna o Escudo de Compromisso (ativa se desativado, desativa se ativo)
+ */
+async function alternarEscudoCompromisso() {
+    const body = document.body;
+    
+    // Se já estiver ativo (body tem a classe escudo-compromisso), desativa
+    if (body.classList.contains('escudo-compromisso')) {
+        // Remove IMEDIATAMENTE a aura amarela
+        const aura = document.getElementById('aura-escudo');
+        if (aura) {
+            aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 opacity-0';
+            aura.classList.remove('aura-amarela');
+        }
+        
+        // Remove todas as classes do body IMEDIATAMENTE
+        body.classList.remove('escudo-compromisso', 'border-shield-compromisso', 'aura-amarela');
+        
+        // Limpa o status no Supabase IMEDIATAMENTE
+        await desativarEscudoCompromissoCompleto();
+        
+        // Mostra modal de feedback
+        mostrarModalFeedbackEscudo();
+        
+        // Atualiza menu FAB
+        atualizarMenuFABEscudo();
+        return;
+    }
+
+    // Se não tem a classe, pergunta o tempo e ativa
+    const minutos = prompt("Quanto tempo de compromisso? (em minutos)", "120");
+    
+    if (minutos && !isNaN(minutos)) {
+        await ativarEscudoCompromisso(parseInt(minutos));
+        atualizarMenuFABEscudo();
+    }
+}
+
+/**
+ * Desativa o Escudo de Compromisso e limpa o timer no Supabase
+ */
+async function desativarEscudoCompromissoCompleto() {
+    const body = document.body;
+    const aura = document.getElementById('aura-escudo');
+    
+    // Remove IMEDIATAMENTE a aura amarela
+    if (aura) {
+        aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 opacity-0';
+        aura.classList.remove('aura-amarela');
+    }
+    
+    // Remove todas as classes de escudo e aura IMEDIATAMENTE
+    body.classList.remove('escudo-compromisso', 'border-shield-compromisso', 'aura-amarela', 'escudo-recuperacao', 'border-shield-recuperacao', 'modo-recuperacao');
+    
+    // Para timer de compromisso se estiver ativo
+    if (escudoCompromissoInterval) {
+        clearInterval(escudoCompromissoInterval);
+        escudoCompromissoInterval = null;
+    }
+    
+    // Limpa o timer no Supabase IMEDIATAMENTE
+    const client = getSupabaseClient();
+    if (client && window.currentUser?.id) {
+        try {
+            await client
+                .from('profiles')
+                .update({
+                    modo_escudo: 'desativado',
+                    escudo_expira_em: null,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', window.currentUser.id);
+            
+            console.log('%c🛡️ Escudo de Compromisso desativado e limpo no Supabase', 'color: #10b981; font-weight: bold;');
+        } catch (error) {
+            console.error('Erro ao limpar escudo no Supabase:', error);
+        }
+    }
+    
+    // Limpa localStorage
+    localStorage.removeItem('modoEscudoAtivo');
+    localStorage.removeItem('escudoCompromissoTempoRestante');
+    localStorage.removeItem('escudoExpiraEm');
+    
+    modoEscudoAtivo = 'desativado';
+    
+    // Reativa alertas de água
+    if (waterAlertCheckInterval) {
+        startWaterAlertCheck();
+    }
 }
 
 /**
@@ -3954,16 +4953,54 @@ function iniciarTimerCompromisso() {
         clearInterval(escudoCompromissoInterval);
     }
     
+    // Atualiza cronômetro visual imediatamente
+    atualizarCronometroEscudo();
+    
     escudoCompromissoInterval = setInterval(() => {
         escudoCompromissoTempoRestante--;
         
         // Salva tempo restante
         localStorage.setItem('escudoCompromissoTempoRestante', escudoCompromissoTempoRestante.toString());
         
+        // Atualiza cronômetro visual
+        atualizarCronometroEscudo();
+        
         if (escudoCompromissoTempoRestante <= 0) {
             finalizarEscudoCompromisso();
         }
     }, 1000);
+}
+
+/**
+ * Atualiza o cronômetro visual do escudo no header-rpg
+ */
+function atualizarCronometroEscudo() {
+    const timerElement = document.getElementById('escudoTimer');
+    if (!timerElement) return;
+    
+    // Verifica se há escudo ativo com tempo
+    if (modoEscudoAtivo !== 'compromisso' || escudoCompromissoTempoRestante <= 0) {
+        timerElement.classList.add('hidden');
+        timerElement.classList.remove('timer-urgente');
+        return;
+    }
+    
+    // Mostra o cronômetro
+    timerElement.classList.remove('hidden');
+    
+    // Calcula minutos e segundos
+    const minutos = Math.floor(escudoCompromissoTempoRestante / 60);
+    const segundos = escudoCompromissoTempoRestante % 60;
+    const tempoFormatado = `${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+    
+    timerElement.textContent = `🛡️ ${tempoFormatado}`;
+    
+    // Se faltar 1 minuto ou menos, adiciona classe de urgência
+    if (escudoCompromissoTempoRestante <= 60) {
+        timerElement.classList.add('timer-urgente');
+    } else {
+        timerElement.classList.remove('timer-urgente');
+    }
 }
 
 /**
@@ -3976,24 +5013,34 @@ async function finalizarEscudoCompromisso() {
         escudoCompromissoInterval = null;
     }
     
-    // Remove borda
+    // Remove cronômetro visual
+    atualizarCronometroEscudo();
+    
+    // Remove IMEDIATAMENTE a aura amarela
     const body = document.body;
-    body.classList.remove('border-shield-compromisso');
+    const aura = document.getElementById('aura-escudo');
+    
+    // Remove todas as classes de escudo e aura IMEDIATAMENTE
+    body.classList.remove('border-shield-compromisso', 'escudo-compromisso', 'aura-amarela');
+    if (aura) {
+        aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 opacity-0';
+        aura.classList.remove('aura-amarela');
+    }
     
     modoEscudoAtivo = 'desativado';
     
-    // Salva no Supabase
-    if (supabaseClient) {
+    // Limpa o estado no Supabase IMEDIATAMENTE
+    const client = getSupabaseClient();
+    if (client && window.currentUser?.id) {
         try {
-            await supabaseClient
+            await client
                 .from('profiles')
-                .upsert({
+                .update({
                     modo_escudo: 'desativado',
                     escudo_expira_em: null,
                     updated_at: new Date().toISOString()
-                }, {
-                    onConflict: 'id'
-                });
+                })
+                .eq('id', window.currentUser.id);
         } catch (error) {
             console.error('Erro ao atualizar escudo:', error);
         }
@@ -4009,36 +5056,143 @@ async function finalizarEscudoCompromisso() {
         startWaterAlertCheck();
     }
     
-    // Mostra notificação
-    mostrarNotificacaoCompromisso();
+    // Envia notificação nativa
+    await enviarNotificacaoEscudoExpirado();
+    
+    // Mostra modal de feedback
+    mostrarModalFeedbackEscudo();
     
     console.log('%c🛡️ Escudo de Compromisso finalizado', 'color: #f59e0b; font-weight: bold;');
 }
 
 /**
- * Mostra notificação quando compromisso acaba
+ * Envia notificação nativa quando o Escudo de Compromisso expira
  */
-function mostrarNotificacaoCompromisso() {
-    const notificacao = document.getElementById('compromissoNotificacao');
-    if (notificacao) {
-        notificacao.classList.remove('hidden');
+async function enviarNotificacaoEscudoExpirado() {
+    if (!capacitorAvailable || !LocalNotifications) {
+        // Fallback: usa Notification API do navegador
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('🛡️ Escudo Expirado', {
+                body: 'Seu Escudo expirou! Como você está se sentindo?',
+                icon: '/favicon.ico',
+                tag: 'escudo-expirado'
+            });
+        }
+        return;
+    }
+    
+    try {
+        await LocalNotifications.schedule({
+            notifications: [{
+                id: 999999, // ID fixo para notificação de escudo
+                title: '🛡️ Escudo Expirado',
+                body: 'Seu Escudo expirou! Como você está se sentindo?',
+                sound: 'default', // Som padrão de alarme do sistema
+                schedule: {
+                    at: new Date() // Dispara imediatamente
+                }
+            }]
+        });
         
-        // Fecha automaticamente após 10 segundos
-        setTimeout(() => {
-            fecharNotificacaoCompromisso();
-        }, 10000);
+        console.log('%c🔔 Notificação de escudo expirado enviada', 'color: #10b981; font-weight: bold;');
+    } catch (error) {
+        console.error('Erro ao enviar notificação de escudo:', error);
     }
 }
 
 /**
- * Fecha notificação de compromisso
+ * Mostra modal de feedback do Escudo de Compromisso
  */
-function fecharNotificacaoCompromisso() {
-    const notificacao = document.getElementById('compromissoNotificacao');
-    if (notificacao) {
-        notificacao.classList.add('hidden');
+function mostrarModalFeedbackEscudo() {
+    const modal = document.getElementById('feedbackEscudoModal');
+    if (modal) {
+        modal.classList.remove('hidden');
     }
 }
+
+/**
+ * Fecha modal de feedback
+ */
+function fecharModalFeedbackEscudo() {
+    const modal = document.getElementById('feedbackEscudoModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    
+    // Garante que a tela voltou ao estado normal (Preto AMOLED)
+    const body = document.body;
+    const aura = document.getElementById('aura-escudo');
+    
+    body.classList.remove('escudo-compromisso', 'border-shield-compromisso', 'aura-amarela', 'aura-roxa');
+    if (aura) {
+        aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 opacity-0';
+        aura.classList.remove('aura-amarela', 'aura-roxa');
+    }
+}
+
+/**
+ * Salva feedback do Escudo de Compromisso
+ */
+async function salvarFeedbackEscudo(emoji) {
+    // Remove IMEDIATAMENTE a aura amarela e o banner antes de salvar
+    const body = document.body;
+    const aura = document.getElementById('aura-escudo');
+    const bannerEscudo = document.getElementById('escudoRotinaIndicador');
+    const bannerCompromisso = document.getElementById('escudoCompromissoIndicador');
+    
+    // Remove todas as classes de escudo e aura IMEDIATAMENTE
+    body.classList.remove('escudo-compromisso', 'border-shield-compromisso', 'aura-amarela', 'aura-roxa');
+    if (aura) {
+        aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 opacity-0';
+        aura.classList.remove('aura-amarela', 'aura-roxa');
+    }
+    
+    // Remove banners IMEDIATAMENTE
+    if (bannerEscudo) {
+        bannerEscudo.classList.add('hidden');
+    }
+    if (bannerCompromisso) {
+        bannerCompromisso.classList.add('hidden');
+    }
+    
+    const client = getSupabaseClient();
+    if (!client || !window.currentUser?.id) {
+        console.warn('Usuário não autenticado, não será possível salvar feedback');
+        fecharModalFeedbackEscudo();
+        return;
+    }
+    
+    try {
+        // Salva no historico_atividades com humor_emoji e tipo 'Encerramento de Escudo'
+        await client
+            .from('historico_atividades')
+            .insert([{
+                user_id: window.currentUser.id,
+                missao_id: 'checkin-humor-' + Date.now(),
+                nome_missao: 'Check-in de Humor',
+                tipo_missao: 'Encerramento de Escudo',
+                categoria: 'Escudo',
+                humor_emoji: emoji,
+                recompensa: 0,
+                pontuacao: 0,
+                origem: 'sistema',
+                dados_extras: {
+                    tipo: 'checkin_humor',
+                    timestamp: new Date().toISOString()
+                }
+            }]);
+        
+        console.log('%c✅ Check-in de Humor salvo:', 'color: #10b981; font-weight: bold;', emoji);
+    } catch (error) {
+        console.error('Erro ao salvar check-in de humor:', error);
+    }
+    
+    // Fecha modal e limpa estado
+    fecharModalFeedbackEscudo();
+}
+
+// Expor função globalmente
+window.salvarFeedbackEscudo = salvarFeedbackEscudo;
 
 /**
  * Ativa Escudo de Recuperação
@@ -4050,8 +5204,15 @@ async function ativarEscudoRecuperacao() {
     modoEscudoAtivo = 'recuperacao';
     
     const body = document.body;
-    body.classList.add('border-shield-recuperacao', 'modo-recuperacao');
-    body.classList.remove('border-shield-compromisso');
+    const aura = document.getElementById('aura-escudo');
+    
+    body.classList.add('border-shield-recuperacao', 'modo-recuperacao', 'escudo-recuperacao');
+    body.classList.remove('border-shield-compromisso', 'escudo-compromisso');
+    
+    // Ativa a aura roxa sobreposta
+    if (aura) {
+        aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 aura-roxa';
+    }
     
     // Mostra overlay
     const overlay = document.getElementById('recuperacaoOverlay');
@@ -4073,9 +5234,17 @@ async function ativarEscudoRecuperacao() {
     // Salva no Supabase
     if (supabaseClient) {
         try {
+            // Usa variável global currentUser.id (garante RLS do Supabase)
+            const userId = window.currentUser?.id;
+            if (!userId) {
+                console.warn('Usuário não autenticado, não será possível salvar escudo no Supabase');
+                return;
+            }
+            
             const { error } = await supabaseClient
                 .from('profiles')
                 .upsert({
+                    id: userId,
                     modo_escudo: 'recuperacao',
                     escudo_expira_em: null,
                     updated_at: new Date().toISOString()
@@ -4105,7 +5274,14 @@ async function ativarEscudoRecuperacao() {
 async function desativarEscudoRecuperacao() {
     // Remove borda e classes
     const body = document.body;
-    body.classList.remove('border-shield-recuperacao', 'modo-recuperacao');
+    const aura = document.getElementById('aura-escudo');
+    
+    // Desativa a aura imediatamente
+    if (aura) {
+        aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 opacity-0';
+    }
+    
+    body.classList.remove('border-shield-recuperacao', 'modo-recuperacao', 'escudo-recuperacao');
     
     // Esconde overlay
     const overlay = document.getElementById('recuperacaoOverlay');
@@ -4118,9 +5294,17 @@ async function desativarEscudoRecuperacao() {
     // Salva no Supabase
     if (supabaseClient) {
         try {
+            // Usa variável global currentUser.id (garante RLS do Supabase)
+            const userId = window.currentUser?.id;
+            if (!userId) {
+                console.warn('Usuário não autenticado, não será possível salvar escudo no Supabase');
+                return;
+            }
+            
             await supabaseClient
                 .from('profiles')
                 .upsert({
+                    id: userId,
                     modo_escudo: 'desativado',
                     escudo_expira_em: null,
                     updated_at: new Date().toISOString()
@@ -4144,7 +5328,7 @@ async function desativarEscudoRecuperacao() {
 }
 
 /**
- * Desativa todos os escudos
+ * Desativa todos os escudos e remove sombras instantaneamente
  */
 function desativarTodosEscudos() {
     // Para timer de compromisso se estiver ativo
@@ -4153,15 +5337,90 @@ function desativarTodosEscudos() {
         escudoCompromissoInterval = null;
     }
     
-    // Remove todas as classes de borda
+    // Remove todas as classes de escudo instantaneamente
     const body = document.body;
-    body.classList.remove('border-shield-compromisso', 'border-shield-recuperacao', 'modo-recuperacao');
+    const aura = document.getElementById('aura-escudo');
+    
+    // Desativa a aura imediatamente
+    if (aura) {
+        aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 opacity-0';
+    }
+    
+    body.classList.remove(
+        'escudo-compromisso', 
+        'border-shield-compromisso', 
+        'escudo-recuperacao',
+        'border-shield-recuperacao', 
+        'modo-recuperacao'
+    );
     
     // Esconde overlay de recuperação
     const overlay = document.getElementById('recuperacaoOverlay');
     if (overlay) {
         overlay.classList.add('hidden');
     }
+}
+
+/**
+ * Verifica se o escudo de compromisso expirou
+ */
+let checkEscudoTimerInterval = null;
+
+async function checkEscudoTimer() {
+    // Só verifica se o escudo de compromisso estiver ativo
+    if (!document.body.classList.contains('escudo-compromisso')) {
+        return;
+    }
+    
+    const client = getSupabaseClient();
+    if (!client || !window.currentUser?.id) {
+        return;
+    }
+    
+    try {
+        const { data, error } = await client
+            .from('profiles')
+            .select('escudo_expira_em')
+            .eq('id', window.currentUser.id)
+            .single();
+        
+        if (error) {
+            console.warn('Erro ao verificar timer do escudo:', error);
+            return;
+        }
+        
+        if (data && data.escudo_expira_em) {
+            const expiraEm = new Date(data.escudo_expira_em);
+            const agora = new Date();
+            
+            // Se a hora atual for maior que escudo_expira_em, desativa
+            if (agora >= expiraEm) {
+                console.log('%c⏰ Escudo de Compromisso expirou automaticamente', 'color: #f59e0b; font-weight: bold;');
+                await desativarEscudoCompromissoCompleto();
+                atualizarMenuFABEscudo();
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao verificar timer do escudo:', error);
+    }
+}
+
+/**
+ * Inicia a verificação periódica do timer do escudo (a cada 1 minuto)
+ */
+function iniciarCheckEscudoTimer() {
+    // Limpa intervalo anterior se existir
+    if (checkEscudoTimerInterval) {
+        clearInterval(checkEscudoTimerInterval);
+    }
+    
+    // Verifica imediatamente
+    checkEscudoTimer();
+    
+    // Configura para verificar a cada 1 minuto (60000ms)
+    checkEscudoTimerInterval = setInterval(checkEscudoTimer, 60000);
+    
+    console.log('✅ Verificação periódica do escudo iniciada (a cada 1 minuto)');
 }
 
 /**
@@ -4187,10 +5446,20 @@ async function loadEstadoEscudos() {
                 
                 // Ativa visualmente
                 const body = document.body;
-                body.classList.add('border-shield-compromisso');
+                const aura = document.getElementById('aura-escudo');
                 
-                // Inicia timer
+                body.classList.add('border-shield-compromisso', 'escudo-compromisso');
+                
+                // Ativa a aura amarela sobreposta
+                if (aura) {
+                    aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 aura-amarela';
+                }
+                
+                // Inicia timer (já atualiza cronômetro visual)
                 iniciarTimerCompromisso();
+                
+                // Garante que o cronômetro está visível
+                atualizarCronometroEscudo();
             } else {
                 // Expirou, limpa
                 modoEscudoAtivo = 'desativado';
@@ -4213,10 +5482,17 @@ async function loadEstadoEscudos() {
     // Tenta carregar do Supabase
     if (supabaseClient) {
         try {
+            // Usa variável global currentUser.id (garante RLS do Supabase)
+            const userId = window.currentUser?.id;
+            if (!userId) {
+                console.warn('Usuário não autenticado, não será possível carregar escudo do Supabase');
+                return;
+            }
+            
             const { data, error } = await supabaseClient
                 .from('profiles')
                 .select('modo_escudo, escudo_expira_em')
-                .limit(1)
+                .eq('id', userId)
                 .single();
             
             if (!error && data) {
@@ -4231,24 +5507,43 @@ async function loadEstadoEscudos() {
                             escudoCompromissoTempoRestante = Math.floor((expiraEmDate - agora) / 1000);
                             
                             const body = document.body;
-                            body.classList.add('border-shield-compromisso');
+                            const aura = document.getElementById('aura-escudo');
+                            
+                            body.classList.add('border-shield-compromisso', 'escudo-compromisso');
+                            
+                            // Ativa a aura amarela sobreposta
+                            if (aura) {
+                                aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 aura-amarela';
+                            }
                             
                             iniciarTimerCompromisso();
                         } else {
                             // Expirou no servidor, atualiza
                             modoEscudoAtivo = 'desativado';
-                            await supabaseClient
-                                .from('profiles')
-                                .upsert({
-                                    modo_escudo: 'desativado',
-                                    escudo_expira_em: null
-                                }, {
-                                    onConflict: 'id'
-                                });
+                            // Usa variável global currentUser.id (garante RLS do Supabase)
+                            const userId = window.currentUser?.id;
+                            if (userId) {
+                                await supabaseClient
+                                    .from('profiles')
+                                    .upsert({
+                                        id: userId,
+                                        modo_escudo: 'desativado',
+                                        escudo_expira_em: null
+                                    }, {
+                                        onConflict: 'id'
+                                    });
+                            }
                         }
                     } else if (modoEscudoAtivo === 'recuperacao') {
                         const body = document.body;
-                        body.classList.add('border-shield-recuperacao', 'modo-recuperacao');
+                        const aura = document.getElementById('aura-escudo');
+                        
+                        body.classList.add('border-shield-recuperacao', 'modo-recuperacao', 'escudo-recuperacao');
+                        
+                        // Ativa a aura roxa sobreposta
+                        if (aura) {
+                            aura.className = 'pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 aura-roxa';
+                        }
                         
                         const overlay = document.getElementById('recuperacaoOverlay');
                         if (overlay) {
@@ -4267,6 +5562,9 @@ async function loadEstadoEscudos() {
 
 // Torna funções acessíveis globalmente
 window.addWaterInstant = addWaterInstant;
+window.updateWaterWidget = updateWaterWidget;
+window.atualizarBarraVisual = atualizarBarraVisual;
+window.atualizarVisualAgua = atualizarVisualAgua; // Compatibilidade
 window.openWaterSettings = openWaterSettings;
 window.closeWaterSettings = closeWaterSettings;
 window.saveWaterSettings = saveWaterSettings;
@@ -4278,12 +5576,1883 @@ window.finishFocusTimer = finishFocusTimer;
 window.concluirEventoAgenda = concluirEventoAgenda;
 window.verificarEventosExternos = verificarEventosExternos;
 window.toggleFAB = toggleFAB;
+window.atualizarMenuFABEscudo = atualizarMenuFABEscudo;
+// Expõe funções de escudo globalmente para uso no HTML
 window.ativarEscudoCompromisso = ativarEscudoCompromisso;
+window.alternarEscudoCompromisso = alternarEscudoCompromisso;
+window.desativarEscudoCompromissoCompleto = desativarEscudoCompromissoCompleto;
 window.ativarEscudoRecuperacao = ativarEscudoRecuperacao;
 window.desativarEscudoRecuperacao = desativarEscudoRecuperacao;
+window.getCurrentUserId = getCurrentUserId;
 window.fecharNotificacaoCompromisso = fecharNotificacaoCompromisso;
 window.verAgenda = verAgenda;
 window.closeAgendaModal = closeAgendaModal;
+
+// ============================================
+// SISTEMA DE PERFIL E BIOMETRIA
+// ============================================
+
+/**
+ * Atualiza a página de perfil com dados do usuário
+ */
+function atualizarPaginaPerfil() {
+    // Verifica Quest Semanal de Biometria quando a página é aberta
+    verificarQuestBiometriaSemanal();
+    
+    // Atualiza dados corporais se o perfil estiver carregado
+    if (window.userProfile) {
+        const altura = window.userProfile.altura_cm || window.userProfile.altura;
+        const peso = window.userProfile.peso_kg || window.userProfile.peso;
+        
+        const profileAltura = document.getElementById('profileAltura');
+        const profilePeso = document.getElementById('profilePeso');
+        
+        if (profileAltura) {
+            profileAltura.textContent = altura ? `${altura} cm` : '-';
+        }
+        if (profilePeso) {
+            profilePeso.textContent = peso ? `${peso} kg` : '-';
+        }
+    }
+    
+    // Atualiza pontos
+    if (window.pointsSystem && typeof window.pointsSystem.getPoints === 'function') {
+        const pointsDisplay = document.getElementById('pointsDisplay');
+        if (pointsDisplay) {
+            const totalPoints = window.pointsSystem.getPoints();
+            const pointsValue = pointsDisplay.querySelector('.text-4xl');
+            if (pointsValue) {
+                pointsValue.textContent = totalPoints.toLocaleString('pt-BR');
+            }
+        }
+    }
+}
+
+/**
+ * Atualiza a página de estatísticas com dados do usuário
+ */
+function atualizarPaginaStats() {
+    // Atualiza dados corporais se o perfil estiver carregado
+    if (window.userProfile) {
+        const altura = window.userProfile.altura_cm || window.userProfile.altura;
+        const peso = window.userProfile.peso_kg || window.userProfile.peso;
+        
+        const statsAltura = document.getElementById('statsAltura');
+        const statsPeso = document.getElementById('statsPeso');
+        
+        if (statsAltura) {
+            statsAltura.textContent = altura ? `${altura} cm` : '-';
+        }
+        if (statsPeso) {
+            statsPeso.textContent = peso ? `${peso} kg` : '-';
+        }
+    }
+}
+
+// ============================================
+// SISTEMA DE MANUTENÇÃO CORPORAL
+// ============================================
+
+let atividadeFisicaTimer = null;
+let atividadeFisicaTempoRestante = 30 * 60; // 30 minutos em segundos
+let atividadeFisicaPausado = false;
+let refeicoesMarcadas = {
+    cafe: false,
+    almoco: false,
+    jantar: false
+};
+let atividadeFisicaCompleta = false; // Flag para atividade física completada hoje
+
+/**
+ * Verifica e reseta refeições diariamente às 00:00
+ */
+function verificarResetRefeicoes() {
+    const hoje = new Date().toISOString().split('T')[0];
+    const ultimoReset = localStorage.getItem('ultimoResetRefeicoes');
+    
+    if (ultimoReset !== hoje) {
+        refeicoesMarcadas = {
+            cafe: false,
+            almoco: false,
+            jantar: false
+        };
+        atividadeFisicaCompleta = false; // Reseta atividade física também
+        localStorage.setItem('ultimoResetRefeicoes', hoje);
+        localStorage.setItem('refeicoesMarcadas', JSON.stringify(refeicoesMarcadas));
+        atualizarCardsRefeicoes();
+        atualizarEstadoWidgets();
+    }
+}
+
+/**
+ * Carrega refeições marcadas do localStorage
+ */
+function carregarRefeicoesMarcadas() {
+    const hoje = new Date().toISOString().split('T')[0];
+    const ultimoReset = localStorage.getItem('ultimoResetRefeicoes');
+    
+    if (ultimoReset === hoje) {
+        const salvo = localStorage.getItem('refeicoesMarcadas');
+        if (salvo) {
+            try {
+                refeicoesMarcadas = JSON.parse(salvo);
+            } catch (e) {
+                refeicoesMarcadas = { cafe: false, almoco: false, jantar: false };
+            }
+        }
+    } else {
+        refeicoesMarcadas = { cafe: false, almoco: false, jantar: false };
+    }
+    
+    atualizarCardsRefeicoes();
+}
+
+/**
+ * Atualiza visual dos cards de refeição (status-bar)
+ */
+function atualizarCardsRefeicoes() {
+    const tipos = ['cafe', 'almoco', 'jantar'];
+    const cores = {
+        cafe: '#fbbf24', // Amarelo
+        almoco: '#10b981', // Verde
+        jantar: '#f97316' // Laranja
+    };
+    
+    tipos.forEach(tipo => {
+        // Atualiza card antigo (se existir)
+        const card = document.getElementById(`refeicao-${tipo}`);
+        if (card) {
+            card.classList.remove('opacity-40', 'opacity-100', 'border-green-500/50', 'border-orange-500/50');
+            if (refeicoesMarcadas[tipo]) {
+                card.classList.add('opacity-40', 'border-green-500/50');
+            } else {
+                card.classList.add('opacity-100');
+            }
+        }
+        
+        // Atualiza status-bar
+        const statusBtn = document.getElementById(`status-${tipo}`);
+        if (statusBtn) {
+            // Remove todas as classes de estado
+            statusBtn.classList.remove(
+                'status-cafe-marcado', 'status-almoco-marcado', 'status-jantar-marcado',
+                'status-refeicao-marcada', 'border-gray-700'
+            );
+            
+            if (refeicoesMarcadas[tipo]) {
+                // Refeição marcada: borda colorida e brilho
+                statusBtn.classList.add(`status-${tipo}-marcado`, 'status-refeicao-marcada');
+                statusBtn.style.borderColor = cores[tipo];
+                statusBtn.style.color = cores[tipo];
+            } else {
+                // Refeição não marcada: borda cinza
+                statusBtn.classList.add('border-gray-700');
+                statusBtn.style.borderColor = '';
+                statusBtn.style.color = '';
+            }
+        }
+    });
+    
+    // Atualiza também widget de água e movimento
+    atualizarEstadoWidgets();
+}
+
+/**
+ * Atualiza estados visuais dos widgets da status-bar
+ */
+function atualizarEstadoWidgets() {
+    // Status Água - atualiza círculo de progresso
+    const statusWater = document.getElementById('status-water');
+    const waterCircle = document.getElementById('status-water-circle');
+    if (statusWater && waterCircle) {
+        const waterAmount = parseInt(localStorage.getItem('waterAmount') || '0', 10);
+        const waterTarget = parseInt(localStorage.getItem('waterTarget') || '2000', 10);
+        const percentage = Math.min(100, Math.round((waterAmount / waterTarget) * 100));
+        
+        // Circunferência do círculo: 2 * π * 23 ≈ 144.5
+        const circumference = 144.5;
+        const offset = circumference - (circumference * percentage / 100);
+        waterCircle.style.strokeDashoffset = offset.toString();
+        
+        // Se completo, muda cor para verde e adiciona classe
+        if (percentage >= 100) {
+            waterCircle.style.stroke = '#10b981';
+            statusWater.classList.add('status-movimento-completo');
+            statusWater.style.borderColor = '#10b981';
+        } else {
+            waterCircle.style.stroke = '#3b82f6';
+            statusWater.classList.remove('status-movimento-completo');
+            statusWater.style.borderColor = '';
+        }
+    }
+    
+    // Status Movimento
+    const statusMovimento = document.getElementById('status-movimento');
+    if (statusMovimento) {
+        statusMovimento.classList.remove('status-movimento-completo', 'border-gray-700');
+        if (atividadeFisicaCompleta) {
+            statusMovimento.classList.add('status-movimento-completo');
+            statusMovimento.style.borderColor = '#10b981';
+            statusMovimento.style.color = '#10b981';
+        } else {
+            statusMovimento.classList.add('border-gray-700');
+            statusMovimento.style.borderColor = '';
+            statusMovimento.style.color = '';
+        }
+    }
+    
+    // Status Limpeza (mantém atualização do widget antigo também)
+    const statusLimpeza = document.getElementById('status-limpeza');
+    const focusTimerWidget = document.getElementById('focusTimerWidget');
+    if (statusLimpeza) {
+        statusLimpeza.classList.remove('status-limpeza-ativo', 'border-gray-700');
+        // Verifica se o timer está ativo (expanded)
+        const focusTimerExpanded = document.getElementById('focusTimerExpanded');
+        if (focusTimerExpanded && !focusTimerExpanded.classList.contains('hidden')) {
+            statusLimpeza.classList.add('status-limpeza-ativo');
+            statusLimpeza.style.borderColor = '#f97316';
+            statusLimpeza.style.color = '#f97316';
+        } else {
+            statusLimpeza.classList.add('border-gray-700');
+            statusLimpeza.style.borderColor = '';
+            statusLimpeza.style.color = '';
+        }
+    }
+    
+    // Widget antigo de água (compatibilidade)
+    const waterWidget = document.getElementById('waterWidget');
+    if (waterWidget) {
+        const waterAmount = parseInt(localStorage.getItem('waterAmount') || '0', 10);
+        if (waterAmount >= 2000) {
+            waterWidget.classList.add('opacity-40', 'border-green-500/50');
+        } else {
+            waterWidget.classList.remove('opacity-40');
+        }
+    }
+    
+    // Widget antigo de movimento (compatibilidade)
+    const movimentoCard = document.getElementById('atividade-fisica-card');
+    if (movimentoCard) {
+        if (atividadeFisicaCompleta) {
+            movimentoCard.classList.add('opacity-40', 'border-green-500/50');
+        } else {
+            movimentoCard.classList.remove('opacity-40');
+        }
+    }
+}
+
+/**
+ * Marca uma refeição como concluída
+ */
+async function marcarRefeicao(tipo) {
+    if (refeicoesMarcadas[tipo]) {
+        return; // Já marcado
+    }
+    
+    const client = getSupabaseClient();
+    if (!client || !window.currentUser?.id) {
+        alert('Erro: usuário não autenticado');
+        return;
+    }
+    
+    try {
+        // Salva no Supabase (tabela atividades ou historico_atividades)
+        const hoje = new Date().toISOString().split('T')[0];
+        const nomeRefeicao = tipo === 'cafe' ? 'Café da Manhã' : tipo === 'almoco' ? 'Almoço' : 'Jantar';
+        
+        await client
+            .from('atividades')
+            .insert([{
+                user_id: window.currentUser.id,
+                nome_tarefa: nomeRefeicao,
+                categoria: 'Saúde',
+                data_completada: hoje,
+                progresso: 100,
+                dados_extras: { tipo: 'refeicao', vitalidade: 10 }
+            }]);
+        
+        // Marca como concluído
+        refeicoesMarcadas[tipo] = true;
+        localStorage.setItem('refeicoesMarcadas', JSON.stringify(refeicoesMarcadas));
+        atualizarCardsRefeicoes();
+        
+        // Desativa aura de refeição se estiver ativa
+        desativarAuraRefeicao();
+        
+        // Adiciona +10 Vitalidade (energia_total)
+        if (window.userProfile) {
+            const novaEnergia = (window.userProfile.energia_total || 0) + 10;
+            await client
+                .from('profiles')
+                .update({ energia_total: novaEnergia })
+                .eq('id', window.currentUser.id);
+            
+            // Recarrega perfil
+            await carregarPerfilUsuario();
+            
+            // Atualiza display de energia
+            const energyDisplay = document.getElementById('energyDisplay');
+            if (energyDisplay) {
+                energyDisplay.textContent = novaEnergia;
+            }
+        }
+        
+        // Confetti leve
+        if (typeof confetti !== 'undefined') {
+            confetti({
+                particleCount: 30,
+                spread: 60,
+                origin: { y: 0.6 },
+                colors: ['#f97316', '#fb923c']
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao marcar refeição:', error);
+        alert('Erro ao marcar refeição. Tente novamente.');
+    }
+}
+
+/**
+ * Abre o timer de atividade física (modal ou widget antigo)
+ */
+function abrirTimerAtividadeFisica() {
+    // Tenta abrir modal primeiro
+    const modal = document.getElementById('movimentoTimerModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        // Sincroniza estado do modal com o widget antigo
+        const timerDiv = document.getElementById('atividade-fisica-timer');
+        const inicioDiv = document.getElementById('atividade-fisica-inicio');
+        if (timerDiv && !timerDiv.classList.contains('hidden')) {
+            document.getElementById('atividade-fisica-timer-modal')?.classList.remove('hidden');
+            document.getElementById('atividade-fisica-inicio-modal')?.classList.add('hidden');
+        }
+        return;
+    }
+    
+    // Fallback para widget antigo
+    const timerDiv = document.getElementById('atividade-fisica-timer');
+    const inicioDiv = document.getElementById('atividade-fisica-inicio');
+    
+    if (timerDiv && inicioDiv) {
+        timerDiv.classList.remove('hidden');
+        inicioDiv.classList.add('hidden');
+    }
+}
+
+/**
+ * Inicia o timer de atividade física
+ */
+function iniciarAtividadeFisica() {
+    if (atividadeFisicaTimer) return; // Já está rodando
+    
+    atividadeFisicaPausado = false;
+    atividadeFisicaTempoRestante = 30 * 60; // 30 minutos
+    
+    const btnIniciar = document.getElementById('btn-iniciar-atividade');
+    const btnPausar = document.getElementById('btn-pausar-atividade');
+    const btnFinalizar = document.getElementById('btn-finalizar-atividade');
+    const btnIniciarModal = document.getElementById('btn-iniciar-atividade-modal');
+    const btnPausarModal = document.getElementById('btn-pausar-atividade-modal');
+    const btnFinalizarModal = document.getElementById('btn-finalizar-atividade-modal');
+    
+    if (btnIniciar) btnIniciar.classList.add('hidden');
+    if (btnPausar) btnPausar.classList.remove('hidden');
+    if (btnFinalizar) btnFinalizar.classList.add('hidden');
+    if (btnIniciarModal) btnIniciarModal.classList.add('hidden');
+    if (btnPausarModal) btnPausarModal.classList.remove('hidden');
+    if (btnFinalizarModal) btnFinalizarModal.classList.add('hidden');
+    
+    // Mostra timer no modal
+    const timerModal = document.getElementById('atividade-fisica-timer-modal');
+    const inicioModal = document.getElementById('atividade-fisica-inicio-modal');
+    if (timerModal) timerModal.classList.remove('hidden');
+    if (inicioModal) inicioModal.classList.add('hidden');
+    
+    atividadeFisicaTimer = setInterval(() => {
+        if (!atividadeFisicaPausado) {
+            atividadeFisicaTempoRestante--;
+            
+            const display = document.getElementById('atividade-timer-display');
+            const displayModal = document.getElementById('atividade-timer-display-modal');
+            const minutos = Math.floor(atividadeFisicaTempoRestante / 60);
+            const segundos = atividadeFisicaTempoRestante % 60;
+            const tempoFormatado = `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+            
+            if (display) {
+                display.textContent = tempoFormatado;
+            }
+            if (displayModal) {
+                displayModal.textContent = tempoFormatado;
+            }
+            
+            if (atividadeFisicaTempoRestante <= 0) {
+                finalizarAtividadeFisica();
+            }
+        }
+    }, 1000);
+}
+
+/**
+ * Pausa o timer de atividade física
+ */
+function pausarAtividadeFisica() {
+    atividadeFisicaPausado = !atividadeFisicaPausado;
+    
+    const btnPausar = document.getElementById('btn-pausar-atividade');
+    const btnPausarModal = document.getElementById('btn-pausar-atividade-modal');
+    const btnResumeModal = document.getElementById('btn-resume-atividade-modal');
+    
+    if (btnPausar) {
+        btnPausar.textContent = atividadeFisicaPausado ? 'Retomar' : 'Pausar';
+    }
+    if (btnPausarModal && btnResumeModal) {
+        if (atividadeFisicaPausado) {
+            btnPausarModal.classList.add('hidden');
+            btnResumeModal.classList.remove('hidden');
+        } else {
+            btnPausarModal.classList.remove('hidden');
+            btnResumeModal.classList.add('hidden');
+        }
+    }
+}
+
+/**
+ * Finaliza a atividade física e ativa brilho de saúde
+ */
+async function finalizarAtividadeFisica() {
+    if (atividadeFisicaTimer) {
+        clearInterval(atividadeFisicaTimer);
+        atividadeFisicaTimer = null;
+    }
+    
+    const client = getSupabaseClient();
+    if (!client || !window.currentUser?.id) {
+        alert('Erro: usuário não autenticado');
+        return;
+    }
+    
+    try {
+        // Salva no Supabase
+        const hoje = new Date().toISOString().split('T')[0];
+        await client
+            .from('atividades')
+            .insert([{
+                user_id: window.currentUser.id,
+                nome_tarefa: 'Movimentar o Corpo',
+                categoria: 'Saúde',
+                data_completada: hoje,
+                progresso: 100,
+                dados_extras: { duracao_minutos: 30 }
+            }]);
+        
+        // Marca como completa
+        atividadeFisicaCompleta = true;
+        atualizarEstadoWidgets();
+        
+        // Ativa brilho de saúde por 1 hora
+        ativarBrilhoSaude();
+        
+        // Reseta timer
+        const timerDiv = document.getElementById('atividade-fisica-timer');
+        const inicioDiv = document.getElementById('atividade-fisica-inicio');
+        const display = document.getElementById('atividade-timer-display');
+        
+        if (timerDiv) timerDiv.classList.add('hidden');
+        if (inicioDiv) inicioDiv.classList.remove('hidden');
+        if (display) display.textContent = '30:00';
+        
+        atividadeFisicaTempoRestante = 30 * 60;
+        
+        // Confetti
+        if (typeof confetti !== 'undefined') {
+            confetti({
+                particleCount: 50,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#10b981', '#34d399']
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao finalizar atividade:', error);
+        alert('Erro ao salvar atividade. Tente novamente.');
+    }
+}
+
+/**
+ * Ativa o efeito visual "Brilho de Saúde" por 1 hora
+ */
+function ativarBrilhoSaude() {
+    document.body.classList.add('brilho-saude');
+    
+    // Remove após 1 hora
+    setTimeout(() => {
+        document.body.classList.remove('brilho-saude');
+    }, 60 * 60 * 1000); // 1 hora em milissegundos
+    
+    // Salva no localStorage para persistir
+    localStorage.setItem('brilhoSaudeAtivo', 'true');
+    localStorage.setItem('brilhoSaudeExpira', (Date.now() + 60 * 60 * 1000).toString());
+}
+
+/**
+ * Verifica se o brilho de saúde ainda está ativo
+ */
+function verificarBrilhoSaude() {
+    const expira = localStorage.getItem('brilhoSaudeExpira');
+    if (expira && Date.now() < parseInt(expira)) {
+        document.body.classList.add('brilho-saude');
+    } else {
+        document.body.classList.remove('brilho-saude');
+        localStorage.removeItem('brilhoSaudeAtivo');
+        localStorage.removeItem('brilhoSaudeExpira');
+    }
+}
+
+/**
+ * Registra evolução de biometria no Supabase
+ */
+async function registrarEvolucaoBiometria() {
+    const client = getSupabaseClient();
+    if (!client || !window.currentUser?.id) {
+        alert('Erro: usuário não autenticado');
+        return;
+    }
+    
+    const peso = parseFloat(document.getElementById('biometriaPeso')?.value);
+    const gordura = parseFloat(document.getElementById('biometriaGordura')?.value);
+    const massaMagra = parseFloat(document.getElementById('biometriaMassaMagra')?.value);
+    // Nota: circunferencia_abdominal não existe no schema atual do Supabase
+    // const circunferencia = parseFloat(document.getElementById('biometriaCircunferencia')?.value) || null;
+    
+    if (!peso || !gordura || !massaMagra) {
+        alert('Por favor, preencha Peso, Gordura e Massa Magra');
+        return;
+    }
+    
+    try {
+        // Salva no Supabase na tabela historico_corpo
+        // Nota: data_registro usa DEFAULT NOW() do Supabase, então não precisa enviar
+        const { error } = await client
+            .from('historico_corpo')
+            .insert([{
+                user_id: window.currentUser.id,
+                peso: peso,
+                percentual_gordura: gordura,
+                massa_magra: massaMagra
+                // circunferencia_abdominal não existe no schema atual
+                // data_registro usa DEFAULT NOW() do Supabase
+            }]);
+        
+        if (error) {
+            console.error('Erro ao salvar biometria:', error);
+            alert('Erro ao salvar biometria. Tente novamente.');
+            return;
+        }
+        
+        // Limpa campos
+        document.getElementById('biometriaPeso').value = '';
+        document.getElementById('biometriaGordura').value = '';
+        document.getElementById('biometriaMassaMagra').value = '';
+        if (document.getElementById('biometriaCircunferencia')) {
+            document.getElementById('biometriaCircunferencia').value = '';
+        }
+        
+        // Confetti
+        if (typeof confetti !== 'undefined') {
+            confetti({
+                particleCount: 50,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#10b981', '#34d399']
+            });
+        }
+        
+        // Atualiza última data de registro para Quest Semanal
+        localStorage.setItem('ultimaBiometriaData', new Date().toISOString().split('T')[0]);
+        
+        // Esconde card de Quest Semanal se estiver visível
+        const questCard = document.getElementById('quest-biometria-semanal');
+        if (questCard) {
+            questCard.classList.add('hidden');
+        }
+        
+        alert('✅ Biometria registrada com sucesso!');
+    } catch (error) {
+        console.error('Erro ao registrar biometria:', error);
+        alert('Erro ao registrar biometria. Tente novamente.');
+    }
+}
+
+/**
+ * Abre o painel de biometria para registrar medida avulsa
+ */
+function registrarMedidaAvulsa() {
+    // Navega para a página de perfil se não estiver lá
+    if (window.navigationSystem) {
+        window.navigationSystem.navigateTo('profile');
+    }
+    
+    // Foca no primeiro campo após um pequeno delay
+    setTimeout(() => {
+        const pesoInput = document.getElementById('biometriaPeso');
+        if (pesoInput) {
+            pesoInput.focus();
+            pesoInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 300);
+}
+
+// ============================================
+// SISTEMA DE CONFIGURAÇÕES DE NOTIFICAÇÕES
+// ============================================
+
+let configsNotificacao = {
+    cafe: '08:00',
+    almoco: '12:30',
+    jantar: '20:00'
+};
+
+// Flag para saber se a coluna configs_notificacao existe no Supabase
+let configsNotificacaoColumnExists = null;
+
+/**
+ * Carrega configurações de notificação do Supabase ou localStorage
+ */
+async function carregarConfigsNotificacao() {
+    const client = getSupabaseClient();
+    
+    // Primeiro tenta carregar do localStorage (fallback rápido)
+    const savedConfigs = localStorage.getItem('configs_notificacao');
+    if (savedConfigs) {
+        try {
+            const parsed = JSON.parse(savedConfigs);
+            configsNotificacao = { ...configsNotificacao, ...parsed };
+            atualizarCamposConfigsNotificacao();
+        } catch (e) {
+            console.warn('Erro ao parsear configs do localStorage:', e);
+        }
+    }
+    
+    // Se já sabemos que a coluna não existe, não tenta buscar do Supabase
+    if (configsNotificacaoColumnExists === false) {
+        return;
+    }
+    
+    // Tenta carregar do Supabase se disponível
+    if (!client || !window.currentUser?.id) {
+        return;
+    }
+    
+    try {
+        const { data, error } = await client
+            .from('profiles')
+            .select('configs_notificacao')
+            .eq('id', window.currentUser.id)
+            .single();
+        
+        // Se a coluna não existe (código 42703 ou erro 400), marca flag e usa apenas localStorage
+        if (error) {
+            // Verifica se é erro de coluna não existir
+            const isColumnNotExists = 
+                error.code === '42703' || 
+                (error.message && (
+                    error.message.includes('does not exist') || 
+                    error.message.includes('column') && error.message.includes('not exist')
+                )) ||
+                (error.details && error.details.includes('does not exist'));
+            
+            if (isColumnNotExists) {
+                // Coluna não existe - marca flag e usa apenas localStorage
+                configsNotificacaoColumnExists = false;
+                console.log('%cℹ️ Coluna configs_notificacao não existe, usando localStorage', 'color: #f59e0b;');
+                return;
+            }
+            
+            if (error.code !== 'PGRST116') { // PGRST116 = não encontrado
+                console.warn('Erro ao carregar configs_notificacao:', error);
+                return;
+            }
+        }
+        
+        // Se chegou aqui, a coluna existe
+        configsNotificacaoColumnExists = true;
+        
+        if (data && data.configs_notificacao) {
+            configsNotificacao = { ...configsNotificacao, ...data.configs_notificacao };
+            // Salva no localStorage também
+            localStorage.setItem('configs_notificacao', JSON.stringify(configsNotificacao));
+        }
+        
+        // Atualiza campos no modal de configurações se existir
+        atualizarCamposConfigsNotificacao();
+    } catch (error) {
+        // Se for erro de rede ou 400, assume que coluna não existe
+        const isColumnNotExists = 
+            (error.message && (
+                error.message.includes('does not exist') || 
+                error.message.includes('400') ||
+                error.message.includes('column') && error.message.includes('not exist')
+            )) ||
+            (error.details && error.details.includes('does not exist'));
+        
+        if (isColumnNotExists) {
+            configsNotificacaoColumnExists = false;
+            console.log('%cℹ️ Coluna configs_notificacao não existe, usando localStorage', 'color: #f59e0b;');
+        } else {
+            console.warn('Erro ao carregar configurações de notificação:', error);
+        }
+    }
+}
+
+/**
+ * Salva configurações de notificação no Supabase e localStorage
+ */
+async function salvarConfigsNotificacao() {
+    const client = getSupabaseClient();
+    if (!window.currentUser?.id) {
+        alert('Erro: usuário não autenticado');
+        return;
+    }
+    
+    const cafeInput = document.getElementById('config-cafe-horario');
+    const almocoInput = document.getElementById('config-almoco-horario');
+    const jantarInput = document.getElementById('config-jantar-horario');
+    
+    if (!cafeInput || !almocoInput || !jantarInput) {
+        return;
+    }
+    
+    configsNotificacao = {
+        cafe: cafeInput.value || '08:00',
+        almoco: almocoInput.value || '12:30',
+        jantar: jantarInput.value || '20:00'
+    };
+    
+    // Sempre salva no localStorage primeiro (funciona mesmo sem Supabase)
+    localStorage.setItem('configs_notificacao', JSON.stringify(configsNotificacao));
+    
+    // Tenta salvar no Supabase se disponível e se a coluna existe
+    if (client && configsNotificacaoColumnExists !== false) {
+        try {
+            const { error } = await client
+                .from('profiles')
+                .update({ 
+                    configs_notificacao: configsNotificacao,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', window.currentUser.id);
+            
+            if (error) {
+                // Se a coluna não existe (código 42703), marca flag e apenas usa localStorage
+                if (error.code === '42703' || (error.message && error.message.includes('does not exist'))) {
+                    configsNotificacaoColumnExists = false;
+                    console.log('%cℹ️ Coluna configs_notificacao não existe, usando apenas localStorage', 'color: #f59e0b;');
+                } else {
+                    console.warn('Erro ao salvar configs_notificacao no Supabase:', error);
+                    // Continua mesmo com erro - já salvou no localStorage
+                }
+            } else {
+                configsNotificacaoColumnExists = true;
+                console.log('%c⚙️ Configurações de notificação salvas no Supabase', 'color: #3b82f6; font-weight: bold;');
+            }
+        } catch (error) {
+            // Se for erro 400 ou de coluna não existir, marca flag
+            if (error.message && (error.message.includes('does not exist') || error.message.includes('400'))) {
+                configsNotificacaoColumnExists = false;
+                console.log('%cℹ️ Coluna configs_notificacao não existe, usando localStorage', 'color: #f59e0b;');
+            } else {
+                console.warn('Erro ao salvar no Supabase (usando localStorage):', error);
+            }
+            // Continua mesmo com erro - já salvou no localStorage
+        }
+    }
+    
+    console.log('%c⚙️ Configurações de notificação salvas (localStorage)', 'color: #3b82f6; font-weight: bold;');
+    
+    // Fecha modal
+    const modal = document.getElementById('configsNotificacaoModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    
+    // Reinicia verificação de aura
+    iniciarVerificacaoAuraRefeicao();
+}
+
+/**
+ * Atualiza campos do modal de configurações
+ */
+function atualizarCamposConfigsNotificacao() {
+    const cafeInput = document.getElementById('config-cafe-horario');
+    const almocoInput = document.getElementById('config-almoco-horario');
+    const jantarInput = document.getElementById('config-jantar-horario');
+    
+    if (cafeInput) cafeInput.value = configsNotificacao.cafe;
+    if (almocoInput) almocoInput.value = configsNotificacao.almoco;
+    if (jantarInput) jantarInput.value = configsNotificacao.jantar;
+}
+
+/**
+ * Abre modal de configurações de notificação
+ */
+function abrirConfigsNotificacao() {
+    const modal = document.getElementById('configsNotificacaoModal');
+    if (modal) {
+        atualizarCamposConfigsNotificacao();
+        modal.classList.remove('hidden');
+    }
+}
+
+/**
+ * Fecha modal de configurações de notificação
+ */
+function fecharConfigsNotificacao() {
+    const modal = document.getElementById('configsNotificacaoModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+// ============================================
+// QUEST SEMANAL DE BIOMETRIA
+// ============================================
+
+let questBiometriaInterval = null;
+
+/**
+ * Verifica se deve mostrar Quest Semanal de Biometria
+ */
+function verificarQuestBiometriaSemanal() {
+    const ultimaData = localStorage.getItem('ultimaBiometriaData');
+    const hoje = new Date().toISOString().split('T')[0];
+    
+    if (!ultimaData) {
+        // Primeira vez - mostra o card
+        mostrarQuestBiometriaSemanal();
+        return;
+    }
+    
+    const ultimaDataObj = new Date(ultimaData);
+    const hojeObj = new Date(hoje);
+    const diffDias = Math.floor((hojeObj - ultimaDataObj) / (1000 * 60 * 60 * 24));
+    
+    if (diffDias >= 7) {
+        mostrarQuestBiometriaSemanal();
+    } else {
+        esconderQuestBiometriaSemanal();
+    }
+}
+
+/**
+ * Mostra card de Quest Semanal de Biometria
+ */
+function mostrarQuestBiometriaSemanal() {
+    const questCard = document.getElementById('quest-biometria-semanal');
+    if (questCard) {
+        questCard.classList.remove('hidden');
+    }
+}
+
+/**
+ * Esconde card de Quest Semanal de Biometria
+ */
+function esconderQuestBiometriaSemanal() {
+    const questCard = document.getElementById('quest-biometria-semanal');
+    if (questCard) {
+        questCard.classList.add('hidden');
+    }
+}
+
+// ============================================
+// AURA DE REFEIÇÃO
+// ============================================
+
+let auraRefeicaoInterval = null;
+let auraRefeicaoAtiva = false;
+
+/**
+ * Inicia verificação de aura de refeição
+ */
+function iniciarVerificacaoAuraRefeicao() {
+    // Limpa intervalo anterior
+    if (auraRefeicaoInterval) {
+        clearInterval(auraRefeicaoInterval);
+    }
+    
+    // Verifica a cada minuto
+    auraRefeicaoInterval = setInterval(() => {
+        verificarAuraRefeicao();
+    }, 60000); // 1 minuto
+    
+    // Verifica imediatamente
+    verificarAuraRefeicao();
+}
+
+/**
+ * Verifica se deve ativar aura de refeição
+ */
+function verificarAuraRefeicao() {
+    const agora = new Date();
+    const horaAtual = agora.getHours() * 60 + agora.getMinutes(); // minutos desde meia-noite
+    const horaFormatada = `${agora.getHours().toString().padStart(2, '0')}:${agora.getMinutes().toString().padStart(2, '0')}`;
+    
+    // Verifica cada tipo de refeição
+    const tipos = ['cafe', 'almoco', 'jantar'];
+    let auraAtiva = false;
+    let corAura = '';
+    let tipoRefeicao = '';
+    
+    tipos.forEach(tipo => {
+        const horarioConfig = configsNotificacao[tipo];
+        if (!horarioConfig) return;
+        
+        const [hora, minuto] = horarioConfig.split(':').map(Number);
+        const horaConfig = hora * 60 + minuto;
+        
+        // Verifica se está no horário (com margem de 5 minutos antes e 30 minutos depois)
+        if (horaAtual >= horaConfig - 5 && horaAtual <= horaConfig + 30) {
+            // Verifica se a refeição não foi marcada
+            if (!refeicoesMarcadas[tipo]) {
+                auraAtiva = true;
+                tipoRefeicao = tipo;
+                
+                if (tipo === 'almoco') {
+                    corAura = 'verde';
+                } else if (tipo === 'jantar') {
+                    corAura = 'laranja';
+                } else if (tipo === 'cafe') {
+                    corAura = 'amarelo';
+                }
+            }
+        }
+    });
+    
+    if (auraAtiva && !auraRefeicaoAtiva) {
+        ativarAuraRefeicao(corAura, tipoRefeicao);
+    } else if (!auraAtiva && auraRefeicaoAtiva) {
+        desativarAuraRefeicao();
+    }
+}
+
+/**
+ * Ativa aura de refeição
+ */
+function ativarAuraRefeicao(cor, tipo) {
+    auraRefeicaoAtiva = true;
+    const body = document.body;
+    
+    // Remove classes anteriores
+    body.classList.remove('aura-refeicao-verde', 'aura-refeicao-laranja', 'aura-refeicao-amarelo');
+    
+    // Adiciona classe correspondente
+    if (cor === 'verde') {
+        body.classList.add('aura-refeicao-verde');
+    } else if (cor === 'laranja') {
+        body.classList.add('aura-refeicao-laranja');
+    } else if (cor === 'amarelo') {
+        body.classList.add('aura-refeicao-amarelo');
+    }
+}
+
+/**
+ * Desativa aura de refeição
+ */
+function desativarAuraRefeicao() {
+    auraRefeicaoAtiva = false;
+    const body = document.body;
+    body.classList.remove('aura-refeicao-verde', 'aura-refeicao-laranja', 'aura-refeicao-amarelo');
+}
+
+// ============================================
+// SISTEMA DE MEDICAMENTOS E NOTIFICAÇÕES
+// ============================================
+
+let medicamentos = [];
+let horariosMedicamentos = {}; // { medicamentoId: [horarios] }
+let medicamentoEditando = null;
+let horarioCounter = 0;
+
+// Verifica se Capacitor está disponível
+let capacitorAvailable = false;
+let LocalNotifications = null;
+
+// Tenta carregar Capacitor (assíncrono)
+async function inicializarCapacitor() {
+    if (typeof window !== 'undefined' && window.Capacitor) {
+        try {
+            const { LocalNotifications: LocalNotificationsPlugin } = await import('@capacitor/local-notifications');
+            LocalNotifications = LocalNotificationsPlugin;
+            capacitorAvailable = true;
+            console.log('%c✅ Capacitor LocalNotifications carregado', 'color: #10b981; font-weight: bold;');
+            
+            // Configura listeners após carregar
+            await configurarListenersNotificacoes();
+        } catch (error) {
+            console.warn('Capacitor não disponível, usando fallback:', error);
+        }
+    }
+}
+
+/**
+ * Solicita permissão para notificações
+ */
+async function solicitarPermissaoNotificacoes() {
+    if (!capacitorAvailable || !LocalNotifications) {
+        // Fallback: usa Notification API do navegador
+        if ('Notification' in window && Notification.permission === 'default') {
+            await Notification.requestPermission();
+        }
+        return;
+    }
+    
+    try {
+        const result = await LocalNotifications.requestPermissions();
+        if (result.display === 'granted') {
+            console.log('%c✅ Permissão de notificações concedida', 'color: #10b981; font-weight: bold;');
+        }
+    } catch (error) {
+        console.error('Erro ao solicitar permissão:', error);
+    }
+}
+
+/**
+ * Abre modal de cadastro de medicamento
+ */
+function abrirModalMedicamento() {
+    medicamentoEditando = null;
+    document.getElementById('medicamentoNome').value = '';
+    document.getElementById('medicamentoDose').value = '';
+    document.getElementById('medicamentoHorario').value = '';
+    document.getElementById('medicamentoEstoque').value = '';
+    document.getElementById('medicamentoModal').classList.remove('hidden');
+    
+    // Solicita permissão ao abrir
+    solicitarPermissaoNotificacoes();
+}
+
+/**
+ * Fecha modal de medicamento
+ */
+function fecharModalMedicamento() {
+    document.getElementById('medicamentoModal').classList.add('hidden');
+    medicamentoEditando = null;
+}
+
+/**
+ * Adiciona campo de horário ao formulário
+ */
+function adicionarHorario() {
+    const container = document.getElementById('horariosContainer');
+    const horarioId = `horario-${horarioCounter++}`;
+    
+    const horarioDiv = document.createElement('div');
+    horarioDiv.className = 'flex gap-2 items-center';
+    horarioDiv.innerHTML = `
+        <input 
+            type="time" 
+            id="${horarioId}"
+            class="flex-1 px-3 py-2 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            required
+        />
+        <button 
+            type="button" 
+            onclick="this.parentElement.remove()" 
+            class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm"
+        >
+            ✕
+        </button>
+    `;
+    
+    container.appendChild(horarioDiv);
+}
+
+/**
+ * Salva medicamento no Supabase e agenda notificações
+ */
+async function salvarMedicamento(event) {
+    if (event) event.preventDefault();
+    
+    const nome = document.getElementById('medicamentoNome').value.trim();
+    const dosagem = document.getElementById('medicamentoDose').value.trim();
+    const horario = document.getElementById('medicamentoHorario').value;
+    const estoque = parseInt(document.getElementById('medicamentoEstoque').value, 10) || 0;
+    
+    if (!nome || !horario) {
+        alert('Preencha Nome e Horário');
+        return;
+    }
+    
+    const client = getSupabaseClient();
+    if (!client || !window.currentUser?.id) {
+        alert('Erro: usuário não autenticado');
+        return;
+    }
+    
+    try {
+        let medicamentoId;
+        
+        if (medicamentoEditando) {
+            // Atualiza medicamento existente
+            const { error } = await client
+                .from('alquimia_medicamentos')
+                .update({
+                    nome: nome,
+                    dosagem: dosagem || null,
+                    horario: horario,
+                    estoque: estoque
+                })
+                .eq('id', medicamentoEditando.id)
+                .eq('user_id', window.currentUser.id);
+            
+            if (error) throw error;
+            medicamentoId = medicamentoEditando.id;
+        } else {
+            // Cria novo medicamento
+            const { data, error } = await client
+                .from('alquimia_medicamentos')
+                .insert([{
+                    user_id: window.currentUser.id,
+                    nome: nome,
+                    dosagem: dosagem || null,
+                    horario: horario,
+                    estoque: estoque,
+                    tomado_hoje: false
+                }])
+                .select()
+                .single();
+            
+            if (error) throw error;
+            medicamentoId = data.id;
+        }
+        
+        // Agenda notificações
+        await agendarNotificacaoMedicamento(medicamentoId, nome, dosagem, horario);
+        
+        // Recarrega lista
+        await carregarMedicamentos();
+        
+        // Fecha modal
+        fecharModalMedicamento();
+        
+        alert('✅ Medicamento salvo com sucesso!');
+    } catch (error) {
+        console.error('Erro ao salvar medicamento:', error);
+        alert('Erro ao salvar medicamento. Tente novamente.');
+    }
+}
+
+/**
+ * Agenda notificação para um medicamento
+ */
+async function agendarNotificacaoMedicamento(medicamentoId, nome, dosagem, horario) {
+    // Verifica se Capacitor está disponível
+    if (!capacitorAvailable || !LocalNotifications) {
+        console.warn('⚠️ Capacitor não disponível, notificações não serão agendadas');
+        return;
+    }
+    
+    // Garante que as permissões foram solicitadas antes de agendar o primeiro alerta
+    try {
+        const { LocalNotifications: LocalNotificationsPlugin } = await import('@capacitor/local-notifications');
+        const result = await LocalNotificationsPlugin.requestPermissions();
+        if (result.display !== 'granted') {
+            console.warn('⚠️ Permissão de notificação não concedida');
+            alert('⚠️ Permissão de notificação necessária para alertas de medicamentos');
+            return;
+        }
+    } catch (permError) {
+        console.error('❌ Erro ao solicitar permissão:', permError);
+        // Continua mesmo assim, pode já ter permissão
+    }
+    
+    try {
+        // Cancela notificações antigas deste medicamento
+        const notificationId = parseInt(`${medicamentoId}`.replace(/-/g, '').substring(0, 9), 10);
+        await LocalNotifications.cancel({ notifications: [notificationId] });
+        
+        // Calcula data da notificação
+        const [hora, minuto] = horario.split(':').map(Number);
+        const hoje = new Date();
+        const dataNotificacao = new Date();
+        dataNotificacao.setHours(hora, minuto, 0, 0);
+        
+        // Se o horário já passou hoje, agenda para amanhã
+        // Caso contrário, agenda para hoje (primeiro alerta)
+        if (dataNotificacao < hoje) {
+            dataNotificacao.setDate(dataNotificacao.getDate() + 1);
+        }
+        
+        const bodyText = dosagem ? `${nome} (${dosagem}) - ${horario}` : `${nome} - ${horario}`;
+        
+        // Agenda o primeiro alerta e configura repetição diária
+        await LocalNotifications.schedule({
+            notifications: [{
+                id: notificationId,
+                title: '💊 Hora do Medicamento',
+                body: bodyText,
+                sound: 'default', // Som padrão de alarme do sistema
+                schedule: {
+                    at: dataNotificacao, // Primeiro alerta (hoje se ainda não passou, amanhã se já passou)
+                    repeats: true,
+                    every: 'day' // Repete diariamente
+                },
+                actionTypeId: 'MED_REMINDER',
+                extra: {
+                    medicamentoId: medicamentoId.toString(),
+                    nome: nome,
+                    dosagem: dosagem || '',
+                    horario: horario
+                }
+            }]
+        });
+        
+        console.log('%c✅ Primeiro alerta agendado para', 'color: #10b981; font-weight: bold;', nome, horario, 'em', dataNotificacao.toLocaleString('pt-BR'));
+    } catch (error) {
+        console.error('❌ Erro ao agendar notificação:', error);
+        alert('Erro ao agendar notificação. Verifique as permissões.');
+    }
+}
+
+/**
+ * Reseta tomado_hoje diariamente
+ */
+async function verificarResetMedicamentosDiario() {
+    const client = getSupabaseClient();
+    if (!client || !window.currentUser?.id) return;
+    
+    const ultimoReset = localStorage.getItem('ultimoResetMedicamentos');
+    const hoje = new Date().toISOString().split('T')[0];
+    
+    if (ultimoReset !== hoje) {
+        try {
+            await client
+                .from('alquimia_medicamentos')
+                .update({ tomado_hoje: false })
+                .eq('user_id', window.currentUser.id)
+                .eq('tomado_hoje', true);
+            
+            localStorage.setItem('ultimoResetMedicamentos', hoje);
+            await carregarMedicamentos();
+        } catch (error) {
+            console.error('Erro ao resetar medicamentos:', error);
+        }
+    }
+}
+
+/**
+ * Carrega medicamentos do Supabase
+ */
+async function carregarMedicamentos() {
+    const client = getSupabaseClient();
+    if (!client || !window.currentUser?.id) {
+        return;
+    }
+    
+    try {
+        const { data, error } = await client
+            .from('alquimia_medicamentos')
+            .select('*')
+            .eq('user_id', window.currentUser.id)
+            .order('horario', { ascending: true });
+        
+        if (error) throw error;
+        
+        medicamentos = data || [];
+        renderizarMedicamentos();
+        
+        // Inicia verificação de horários
+        iniciarVerificacaoHorariosMedicamentos();
+    } catch (error) {
+        console.error('Erro ao carregar medicamentos:', error);
+        medicamentos = [];
+        renderizarMedicamentos();
+    }
+}
+
+/**
+ * Renderiza lista de medicamentos
+ */
+function renderizarMedicamentos() {
+    const container = document.getElementById('medicamentosList');
+    const empty = document.getElementById('medicamentosEmpty');
+    
+    if (!container) return;
+    
+    if (medicamentos.length === 0) {
+        if (empty) empty.classList.remove('hidden');
+        container.innerHTML = '';
+        return;
+    }
+    
+    if (empty) empty.classList.add('hidden');
+    
+    container.innerHTML = medicamentos.map(med => {
+        const dosagemStr = med.dosagem ? ` (${med.dosagem})` : '';
+        const tomadoClass = med.tomado_hoje ? 'opacity-50' : '';
+        const tomadoBadge = med.tomado_hoje ? '<span class="text-xs bg-green-600 px-2 py-1 rounded">✓ Tomado</span>' : '';
+        return `
+            <div class="bg-[#1a1a1a] border border-gray-800 rounded-xl p-2 ${tomadoClass}">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <h3 class="font-semibold text-sm">${med.nome}${dosagemStr}</h3>
+                            ${tomadoBadge}
+                        </div>
+                        <p class="text-xs text-gray-400">⏰ ${med.horario}</p>
+                        <p class="text-xs text-gray-500">Estoque: ${med.estoque}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="tomarMedicamento('${med.id}')" class="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold" ${med.tomado_hoje ? 'disabled' : ''}>Tomar</button>
+                        <button onclick="editarMedicamento('${med.id}')" class="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold">Editar</button>
+                        <button onclick="excluirMedicamento('${med.id}')" class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold">Excluir</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Edita medicamento
+ */
+async function editarMedicamento(id) {
+    const medicamento = medicamentos.find(m => m.id === id);
+    if (!medicamento) return;
+    
+    medicamentoEditando = medicamento;
+    document.getElementById('medicamentoNome').value = medicamento.nome || '';
+    document.getElementById('medicamentoDose').value = medicamento.dosagem || '';
+    document.getElementById('medicamentoHorario').value = medicamento.horario || '';
+    document.getElementById('medicamentoEstoque').value = medicamento.estoque || 0;
+    
+    document.getElementById('medicamentoModal').classList.remove('hidden');
+}
+
+/**
+ * Exclui medicamento
+ */
+async function excluirMedicamento(id) {
+    if (!confirm('Tem certeza que deseja excluir este medicamento?')) return;
+    
+    const client = getSupabaseClient();
+    if (!client || !window.currentUser?.id) {
+        alert('Erro: usuário não autenticado');
+        return;
+    }
+    
+    try {
+        // Cancela notificações
+        if (capacitorAvailable && LocalNotifications) {
+            const notificationId = parseInt(`${id}`.replace(/-/g, '').substring(0, 9), 10);
+            await LocalNotifications.cancel({ notifications: [notificationId] });
+        }
+        
+        // Remove do Supabase
+        const { error } = await client
+            .from('alquimia_medicamentos')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', window.currentUser.id);
+        
+        if (error) throw error;
+        
+        await carregarMedicamentos();
+        alert('✅ Medicamento excluído');
+    } catch (error) {
+        console.error('Erro ao excluir medicamento:', error);
+        alert('Erro ao excluir medicamento. Tente novamente.');
+    }
+}
+
+/**
+ * Toma medicamento (marca como tomado hoje)
+ */
+async function tomarMedicamento(medicamentoId) {
+    const client = getSupabaseClient();
+    if (!client || !window.currentUser?.id) {
+        alert('Erro: usuário não autenticado');
+        return;
+    }
+    
+    try {
+        const medicamento = medicamentos.find(m => m.id === medicamentoId);
+        if (!medicamento) {
+            alert('Medicamento não encontrado');
+            return;
+        }
+        
+        const novoEstoque = Math.max(0, (medicamento.estoque || 0) - 1);
+        const agora = new Date().toISOString();
+        
+        // Atualiza no Supabase
+        await client
+            .from('alquimia_medicamentos')
+            .update({ 
+                tomado_hoje: true,
+                ultima_dose: agora,
+                estoque: novoEstoque
+            })
+            .eq('id', medicamentoId)
+            .eq('user_id', window.currentUser.id);
+        
+        // Adiciona +20 XP
+        if (window.pointsSystem) {
+            window.pointsSystem.addPoints(20);
+        }
+        
+        // Salva atividade
+        await client
+            .from('atividades')
+            .insert([{
+                user_id: window.currentUser.id,
+                nome_tarefa: `Medicamento: ${medicamento.nome}`,
+                categoria: 'Saúde',
+                data_completada: new Date().toISOString().split('T')[0],
+                progresso: 100,
+                dados_extras: { tipo: 'medicamento', xp: 20 }
+            }]);
+        
+        // Desativa borbulha
+        desativarBorbulhaFrasco();
+        
+        // Recarrega lista
+        await carregarMedicamentos();
+        
+        // Confetti
+        if (typeof confetti !== 'undefined') {
+            confetti({
+                particleCount: 30,
+                spread: 60,
+                origin: { y: 0.6 },
+                colors: ['#10b981', '#34d399']
+            });
+        }
+        
+        alert('✅ Medicamento registrado!');
+    } catch (error) {
+        console.error('Erro ao tomar medicamento:', error);
+        alert('Erro ao registrar medicamento. Tente novamente.');
+    }
+}
+
+/**
+ * Confirma ingestão de medicamento (chamado pela notificação)
+ */
+async function confirmarIngestaoMedicamento(medicamentoId) {
+    await tomarMedicamento(medicamentoId);
+}
+
+/**
+ * Adia notificação de medicamento em 30 minutos
+ */
+async function adiarMedicamento30min(medicamentoId, nome, dosagem, horario) {
+    if (!capacitorAvailable || !LocalNotifications) {
+        // Fallback: usa setTimeout
+        setTimeout(() => {
+            const frasco = document.getElementById('frascoAlquimia');
+            if (frasco) {
+                frasco.classList.add('frasco-borbulhando');
+            }
+            alert(`💊 Lembrete: ${nome}${dosagem ? ' (' + dosagem + ')' : ''} - ${horario}`);
+        }, 30 * 60 * 1000);
+        return;
+    }
+    
+    try {
+        const agora = new Date();
+        const novaData = new Date(agora.getTime() + 30 * 60 * 1000); // +30 minutos
+        
+        const notificationId = parseInt(`${medicamentoId}${Date.now()}`.substring(0, 9), 10);
+        const bodyText = dosagem ? `${nome} (${dosagem}) - ${horario}` : `${nome} - ${horario}`;
+        
+        await LocalNotifications.schedule({
+            notifications: [{
+                id: notificationId,
+                title: '💊 Hora do Medicamento',
+                body: bodyText,
+                sound: 'default', // Som padrão de alarme do sistema
+                schedule: {
+                    at: novaData
+                },
+                actionTypeId: 'MED_REMINDER',
+                extra: {
+                    medicamentoId: medicamentoId.toString(),
+                    nome: nome,
+                    dosagem: dosagem || '',
+                    horario: horario
+                }
+            }]
+        });
+        
+        console.log('%c⏰ Medicamento adiado por 30 minutos', 'color: #f59e0b; font-weight: bold;');
+    } catch (error) {
+        console.error('Erro ao adiar medicamento:', error);
+    }
+}
+
+// ============================================
+// VERIFICAÇÃO DE HORÁRIOS E BORBULHA
+// ============================================
+
+let verificacaoHorariosInterval = null;
+
+/**
+ * Inicia verificação de horários de medicamentos
+ */
+function iniciarVerificacaoHorariosMedicamentos() {
+    if (verificacaoHorariosInterval) {
+        clearInterval(verificacaoHorariosInterval);
+    }
+    
+    // Verifica a cada minuto
+    verificacaoHorariosInterval = setInterval(() => {
+        verificarHorariosMedicamentos();
+    }, 60000);
+    
+    // Verifica imediatamente
+    verificarHorariosMedicamentos();
+}
+
+/**
+ * Verifica se algum medicamento está no horário
+ */
+function verificarHorariosMedicamentos() {
+    const agora = new Date();
+    const horaAtual = agora.getHours();
+    const minutoAtual = agora.getMinutes();
+    const horaAtualStr = `${String(horaAtual).padStart(2, '0')}:${String(minutoAtual).padStart(2, '0')}`;
+    
+    let medicamentoNoHorario = null;
+    
+    medicamentos.forEach(med => {
+        if (med.tomado_hoje) return; // Já foi tomado hoje
+        
+        const [horaMed, minutoMed] = med.horario.split(':').map(Number);
+        const horaMedStr = `${String(horaMed).padStart(2, '0')}:${String(minutoMed).padStart(2, '0')}`;
+        
+        // Verifica se está no horário (com margem de 5 minutos antes e depois)
+        if (horaMedStr === horaAtualStr || 
+            (horaMed === horaAtual && Math.abs(minutoMed - minutoAtual) <= 5)) {
+            medicamentoNoHorario = med;
+        }
+    });
+    
+    if (medicamentoNoHorario) {
+        ativarBorbulhaFrasco();
+        enviarNotificacaoMedicamento(medicamentoNoHorario);
+    } else {
+        desativarBorbulhaFrasco();
+    }
+}
+
+/**
+ * Ativa animação de borbulha no frasco
+ */
+function ativarBorbulhaFrasco() {
+    const frasco = document.getElementById('frascoAlquimia');
+    if (frasco) {
+        frasco.classList.add('frasco-borbulhando');
+    }
+}
+
+/**
+ * Desativa animação de borbulha no frasco
+ */
+function desativarBorbulhaFrasco() {
+    const frasco = document.getElementById('frascoAlquimia');
+    if (frasco) {
+        frasco.classList.remove('frasco-borbulhando');
+    }
+}
+
+/**
+ * Envia notificação nativa do medicamento
+ */
+async function enviarNotificacaoMedicamento(medicamento) {
+    if (!capacitorAvailable || !LocalNotifications) {
+        // Fallback: usa Notification API do navegador
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('💊 Hora do Medicamento', {
+                body: `${medicamento.nome}${medicamento.dosagem ? ' (' + medicamento.dosagem + ')' : ''} - ${medicamento.horario}`,
+                icon: '/favicon.ico',
+                tag: `med-${medicamento.id}`
+            });
+        }
+        return;
+    }
+    
+    try {
+        const notificationId = parseInt(`${medicamento.id}`.replace(/-/g, '').substring(0, 9), 10);
+        const bodyText = medicamento.dosagem ? 
+            `${medicamento.nome} (${medicamento.dosagem}) - ${medicamento.horario}` : 
+            `${medicamento.nome} - ${medicamento.horario}`;
+        
+        await LocalNotifications.schedule({
+            notifications: [{
+                id: notificationId,
+                title: '💊 Hora do Medicamento',
+                body: bodyText,
+                sound: 'default', // Som padrão de alarme do sistema
+                actionTypeId: 'MED_REMINDER',
+                extra: {
+                    medicamentoId: medicamento.id.toString(),
+                    nome: medicamento.nome,
+                    dosagem: medicamento.dosagem || '',
+                    horario: medicamento.horario
+                }
+            }]
+        });
+    } catch (error) {
+        console.error('Erro ao enviar notificação:', error);
+    }
+}
+
+// ============================================
+// AURA DE ALERTA DE MEDICAMENTO
+// ============================================
+
+let auraMedicamentoInterval = null;
+let auraMedicamentoAtiva = false;
+
+/**
+ * Inicia verificação de aura de medicamento
+ */
+function iniciarVerificacaoAuraMedicamento() {
+    if (auraMedicamentoInterval) {
+        clearInterval(auraMedicamentoInterval);
+    }
+    
+    // Verifica a cada minuto
+    auraMedicamentoInterval = setInterval(() => {
+        verificarAuraMedicamento();
+    }, 60000);
+    
+    // Verifica imediatamente
+    verificarAuraMedicamento();
+}
+
+/**
+ * Verifica se deve ativar aura de medicamento
+ */
+function verificarAuraMedicamento() {
+    const agora = new Date();
+    const horaAtual = agora.getHours() * 60 + agora.getMinutes();
+    
+    let medicamentoAtrasado = false;
+    
+    medicamentos.forEach(med => {
+        if (!med.horarios || med.estoque <= 0) return;
+        
+        med.horarios.forEach(horario => {
+            const [hora, minuto] = horario.split(':').map(Number);
+            const horaMedicamento = hora * 60 + minuto;
+            
+            // Se passou do horário (com margem de 5 minutos) e não foi confirmado hoje
+            if (horaAtual > horaMedicamento + 5) {
+                // Verifica se foi confirmado hoje (pode ser melhorado com histórico)
+                medicamentoAtrasado = true;
+            }
+        });
+    });
+    
+    if (medicamentoAtrasado && !auraMedicamentoAtiva) {
+        ativarAuraMedicamento();
+    } else if (!medicamentoAtrasado && auraMedicamentoAtiva) {
+        desativarAuraMedicamento();
+    }
+}
+
+/**
+ * Ativa aura de alerta de medicamento (branco intenso)
+ */
+function ativarAuraMedicamento() {
+    auraMedicamentoAtiva = true;
+    document.body.classList.add('aura-medicamento-alerta');
+}
+
+/**
+ * Desativa aura de alerta de medicamento
+ */
+function desativarAuraMedicamento() {
+    auraMedicamentoAtiva = false;
+    document.body.classList.remove('aura-medicamento-alerta');
+}
+
+/**
+ * Configura listeners de notificações do Capacitor
+ */
+async function configurarListenersNotificacoes() {
+    if (!capacitorAvailable || !LocalNotifications) return;
+    
+    try {
+        // Define actionTypeId MED_REMINDER com botões
+        await LocalNotifications.registerActionTypes({
+            types: [
+                {
+                    id: 'MED_REMINDER',
+                    actions: [
+                        {
+                            id: 'CONFIRMAR_INGESTAO',
+                            title: 'Confirmar Ingestão',
+                            foreground: true
+                        },
+                        {
+                            id: 'ADIAR_30MIN',
+                            title: 'Adiar 30 min',
+                            foreground: false
+                        }
+                    ]
+                }
+            ]
+        });
+        
+        await LocalNotifications.addListener('actionPerformed', (notification) => {
+            const actionId = notification.actionId;
+            const extra = notification.notification.extra || {};
+            const medicamentoId = extra.medicamentoId;
+            const nome = extra.nome || '';
+            const dosagem = extra.dosagem || '';
+            const horario = extra.horario || '';
+            
+            if (actionId === 'CONFIRMAR_INGESTAO') {
+                confirmarIngestaoMedicamento(medicamentoId);
+            } else if (actionId === 'ADIAR_30MIN') {
+                adiarMedicamento30min(medicamentoId, nome, dosagem, horario);
+            }
+        });
+        
+        console.log('%c✅ Listeners de notificações configurados', 'color: #10b981; font-weight: bold;');
+    } catch (error) {
+        console.error('Erro ao configurar listeners:', error);
+    }
+}
+
+// ============================================
+// SISTEMA DE TEMA RPG
+// ============================================
+
+/**
+ * Carrega preferência de tema do Supabase
+ */
+async function carregarTemaRPG() {
+    const client = getSupabaseClient();
+    if (!client || !window.currentUser?.id) {
+        // Fallback para localStorage
+        const temaSalvo = localStorage.getItem('temaRPG');
+        if (temaSalvo === 'true') {
+            aplicarTemaRPG(true);
+        }
+        return;
+    }
+    
+    try {
+        const { data, error } = await client
+            .from('profiles')
+            .select('tema_rpg')
+            .eq('id', window.currentUser.id)
+            .single();
+        
+        if (error && error.code !== 'PGRST116') { // PGRST116 = nenhuma linha retornada
+            console.warn('Erro ao carregar tema:', error);
+            // Fallback para localStorage
+            const temaSalvo = localStorage.getItem('temaRPG');
+            if (temaSalvo === 'true') {
+                aplicarTemaRPG(true);
+            }
+            return;
+        }
+        
+        const temaAtivo = data?.tema_rpg === true || localStorage.getItem('temaRPG') === 'true';
+        aplicarTemaRPG(temaAtivo);
+    } catch (error) {
+        console.error('Erro ao carregar tema:', error);
+        const temaSalvo = localStorage.getItem('temaRPG');
+        if (temaSalvo === 'true') {
+            aplicarTemaRPG(true);
+        }
+    }
+}
+
+/**
+ * Salva preferência de tema no Supabase
+ */
+async function salvarTemaRPG(temaAtivo) {
+    const client = getSupabaseClient();
+    
+    // Salva em localStorage como fallback
+    localStorage.setItem('temaRPG', temaAtivo ? 'true' : 'false');
+    
+    if (!client || !window.currentUser?.id) {
+        return;
+    }
+    
+    try {
+        const { error } = await client
+            .from('profiles')
+            .update({ tema_rpg: temaAtivo })
+            .eq('id', window.currentUser.id);
+        
+        if (error) {
+            console.warn('Erro ao salvar tema no Supabase:', error);
+        }
+    } catch (error) {
+        console.error('Erro ao salvar tema:', error);
+    }
+}
+
+/**
+ * Aplica ou remove tema RPG
+ */
+function aplicarTemaRPG(ativo) {
+    const body = document.body;
+    const toggle = document.getElementById('temaRpgToggle');
+    const texto = document.getElementById('temaAtualTexto');
+    
+    if (ativo) {
+        body.classList.add('tema-rpg');
+        if (toggle) toggle.checked = true;
+        if (texto) texto.textContent = 'Modo RPG (Imersivo) ativo';
+    } else {
+        body.classList.remove('tema-rpg');
+        if (toggle) toggle.checked = false;
+        if (texto) texto.textContent = 'Modo Minimalista (AMOLED) ativo';
+    }
+}
+
+/**
+ * Alterna tema RPG
+ */
+async function alternarTemaRPG() {
+    const toggle = document.getElementById('temaRpgToggle');
+    const temaAtivo = toggle?.checked || false;
+    
+    aplicarTemaRPG(temaAtivo);
+    await salvarTemaRPG(temaAtivo);
+}
+
+// Expor funções globalmente
+window.abrirModalMedicamento = abrirModalMedicamento;
+window.fecharModalMedicamento = fecharModalMedicamento;
+window.adicionarHorario = adicionarHorario;
+window.salvarMedicamento = salvarMedicamento;
+window.editarMedicamento = editarMedicamento;
+window.excluirMedicamento = excluirMedicamento;
+window.confirmarIngestaoMedicamento = confirmarIngestaoMedicamento;
+window.adiarMedicamento30min = adiarMedicamento30min;
+window.tomarMedicamento = tomarMedicamento;
+window.alternarTemaRPG = alternarTemaRPG;
+
+// Expor funções globalmente
+window.registrarEvolucaoBiometria = registrarEvolucaoBiometria;
+window.registrarMedidaAvulsa = registrarMedidaAvulsa;
+window.abrirConfigsNotificacao = abrirConfigsNotificacao;
+window.fecharConfigsNotificacao = fecharConfigsNotificacao;
+window.salvarConfigsNotificacao = salvarConfigsNotificacao;
+window.abrirTimerAtividadeFisica = abrirTimerAtividadeFisica;
+window.iniciarAtividadeFisica = iniciarAtividadeFisica;
+window.pausarAtividadeFisica = pausarAtividadeFisica;
+window.finalizarAtividadeFisica = finalizarAtividadeFisica;
 
 // Inicialização
 let pointsSystem;
@@ -4332,20 +7501,37 @@ function inicializarApp() {
     };
     
     // Inicializa widgets de ações instantâneas
+    // loadWaterAmount() já faz o reset diário automaticamente
     loadWaterAmount();
     
-    // Reseta água diariamente
-    const today = new Date().toDateString();
-    const lastWaterReset = localStorage.getItem('lastWaterReset');
-    if (lastWaterReset !== today) {
-        waterAmount = 0;
-        localStorage.setItem('waterAmount', '0');
-        localStorage.setItem('lastWaterReset', today);
-        // Reseta também o último tempo de água
-        lastWaterTime = null;
-        localStorage.removeItem('lastWaterTime');
-        updateWaterWidget();
-    }
+    // Inicializa sistema de manutenção corporal
+    verificarResetRefeicoes();
+    carregarRefeicoesMarcadas();
+    verificarBrilhoSaude();
+    atualizarEstadoWidgets(); // Atualiza estados visuais dos widgets compactos
+    
+    // Carrega configurações de notificação e inicia verificações
+    carregarConfigsNotificacao().then(() => {
+        iniciarVerificacaoAuraRefeicao();
+    });
+    
+    // Verifica Quest Semanal de Biometria
+    verificarQuestBiometriaSemanal();
+    
+    // Inicializa sistema de medicamentos
+    inicializarCapacitor().then(() => {
+        verificarResetMedicamentosDiario().then(() => {
+            carregarMedicamentos();
+        });
+    });
+    
+    // Carrega tema RPG
+    carregarTemaRPG();
+    
+    // Verifica reset de refeições a cada minuto
+    setInterval(() => {
+        verificarResetRefeicoes();
+    }, 60 * 1000);
     
     // Fecha modal de configurações ao clicar fora
     const waterSettingsModal = document.getElementById('waterSettingsModal');
@@ -4372,6 +7558,12 @@ function inicializarApp() {
     
     // Carrega estado dos Escudos
     loadEstadoEscudos();
+    
+    // Inicia verificação periódica do timer do escudo
+    iniciarCheckEscudoTimer();
+    
+    // Atualiza menu FAB ao carregar
+    atualizarMenuFABEscudo();
     
     // Verifica eventos externos ao carregar
     verificarEventosExternos();
@@ -4412,6 +7604,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Configura input de nome
     configurarInputNome();
     
+    // Configura botão de sincronizar realidade
+    const finalizarBtn = document.getElementById('btn-finalizar-personagem');
+    if (finalizarBtn) {
+        finalizarBtn.addEventListener('click', sincronizarRealidade);
+    }
+    
     // Configura botão de login
     const loginBtn = document.getElementById('loginBtn');
     if (loginBtn) {
@@ -4421,12 +7619,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Verifica autenticação ao carregar (vai decidir qual tela mostrar)
+    // Se houver sessão, pula login e vai direto para dashboard
     verificarAutenticacao();
     
-    // Permite Enter no campo de e-mail
+    // Permite Enter nos campos de login
     const emailInput = document.getElementById('loginEmail');
+    const passwordInput = document.getElementById('loginPassword');
+    
     if (emailInput) {
         emailInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                if (passwordInput) {
+                    passwordInput.focus();
+                } else {
+                    enviarMagicLink();
+                }
+            }
+        });
+    }
+    
+    if (passwordInput) {
+        passwordInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 enviarMagicLink();
             }

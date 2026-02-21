@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LifeGaming</string>
+    <string name="title_activity_main">LifeGaming</string>
+    <string name="package_name">com.lifegaming.app</string>
+    <string name="custom_url_scheme">com.lifegaming.app</string>
+</resources>

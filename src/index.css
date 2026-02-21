@@ -1,68 +1,219 @@
+/* Tailwind é carregado via CDN no index.html */
+/* Não precisamos das diretivas @tailwind aqui */
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    --amoled-black: #000000;
+    --card-dark: #121212;
+    --neon-yellow: #fbbf24;
+    --neon-purple: #8b5cf6;
+    --neon-blue: #3b82f6;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent; /* Remove o brilho de clique no Android */
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+    background-color: var(--amoled-black);
+    color: #ffffff;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    /* Permite que sombras internas sejam visíveis */
+    position: relative;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* --- O BOTÃO FLUTUANTE (+) --- */
+.fab-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+.fab-main {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background-color: #3b82f6; /* Azul Neon */
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.fab-main:active {
+    transform: scale(0.9);
+}
+
+/* Pulsação amarela para escudo ativo */
+.fab-item.escudo-ativo-pulsante {
+    animation: pulse-yellow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-yellow {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7);
+        background-color: rgba(251, 191, 36, 0.1);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(251, 191, 36, 0);
+        background-color: rgba(251, 191, 36, 0.2);
+    }
+}
+
+/* --- EFEITOS DE ESCUDO (NUVEM/AURA) --- */
+/* Efeito Nuvem/Aura Amarela (Compromisso) */
+.escudo-compromisso {
+    box-shadow: 
+        inset 0 0 30px 10px rgba(251, 191, 36, 0.6), /* Brilho interno suave */
+        0 0 40px 15px rgba(251, 191, 36, 0.4);      /* Aura externa */
+    border: none !important; /* Remove a linha sólida */
+    transition: box-shadow 0.5s ease-in-out;
+}
+
+/* Efeito Nuvem/Aura Roxa (Recuperação) */
+.escudo-recuperacao {
+    box-shadow: 
+        inset 0 0 30px 10px rgba(139, 92, 246, 0.6), 
+        0 0 40px 15px rgba(139, 92, 246, 0.4);
+    border: none !important;
+    transition: box-shadow 0.5s ease-in-out;
+}
+
+/* Animação de pulsar para a nuvem parecer "viva" */
+@keyframes pulsarAura {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
+}
+
+.escudo-compromisso, .escudo-recuperacao {
+    animation: pulsarAura 3s infinite ease-in-out;
+}
+
+/* --- BARRA DE ÁGUA --- */
+.barra-agua-container {
+    width: 100%;
+    height: 12px;
+    background: #1a1a1a;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.barra-agua-fill {
+    height: 100%;
+    background-color: #3b82f6; /* Azul Inicial */
+    width: 0%; /* O JS vai alterar isso */
+    transition: width 0.5s ease, background-color 0.5s ease;
+    box-shadow: 0 0 10px var(--neon-blue);
+}
+
+.barra-agua-fill.meta-atingida {
+    background-color: #fbbf24; /* Dourado */
+    box-shadow: 0 0 15px #fbbf24;
+}
+
+/* --- BRILHO DE SAÚDE --- */
+.brilho-saude {
+    animation: brilhoSaude 2s ease-in-out infinite;
+}
+
+@keyframes brilhoSaude {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        filter: brightness(1);
+    }
+    50% {
+        box-shadow: 0 0 40px rgba(16, 185, 129, 0.8);
+        filter: brightness(1.2);
+    }
+}
+
+/* Aplicar no body quando ativo */
+body.brilho-saude {
+    position: relative;
+}
+
+body.brilho-saude::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9998;
+    background: radial-gradient(circle at center, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
+    animation: brilhoSaude 2s ease-in-out infinite;
+}
+
+/* --- LEMBRETES DE REFEIÇÕES --- */
+@keyframes pulsarVerde {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+        border-color: rgba(34, 197, 94, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+        border-color: rgba(34, 197, 94, 1);
+    }
+}
+
+@keyframes pulsarLaranja {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7);
+        border-color: rgba(249, 115, 22, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(249, 115, 22, 0);
+        border-color: rgba(249, 115, 22, 1);
+    }
+}
+
+.refeicao-lembrete-verde {
+    animation: pulsarVerde 2s ease-in-out infinite;
+    border-color: rgba(34, 197, 94, 0.8) !important;
+}
+
+.refeicao-lembrete-laranja {
+    animation: pulsarLaranja 2s ease-in-out infinite;
+    border-color: rgba(249, 115, 22, 0.8) !important;
+}
+
+/* --- METABOLISMO ATIVO --- */
+@keyframes metabolismoAtivo {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        filter: brightness(1);
+    }
+    50% {
+        box-shadow: 0 0 40px rgba(16, 185, 129, 0.8);
+        filter: brightness(1.15);
+    }
+}
+
+.metabolismo-ativo {
+    animation: metabolismoAtivo 2s ease-in-out infinite;
+    position: relative;
+}
+
+.metabolismo-ativo::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: inherit;
+    background: linear-gradient(45deg, rgba(16, 185, 129, 0.3), rgba(34, 197, 94, 0.3));
+    z-index: -1;
+    animation: metabolismoAtivo 2s ease-in-out infinite;
 }
