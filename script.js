@@ -855,6 +855,10 @@ function selecionarClasse(classe) {
  * Cria personagem no Supabase
  */
 async function criarPersonagem() {
+    alert('Enviando dados ao Supabase...');
+    console.log('Tentando salvar...');
+    console.log('🎮 [criarPersonagem] Função chamada');
+    
     const nameInput = document.getElementById('characterName');
     const createBtn = document.getElementById('createCharacterBtn');
     const messageEl = document.getElementById('characterCreationMessage');
@@ -864,7 +868,7 @@ async function criarPersonagem() {
     
     if (!nameInput || !createBtn || !client) {
         if (!client) {
-            console.error('Supabase não configurado');
+            console.error('❌ [criarPersonagem] Supabase não configurado');
             if (messageEl) {
                 messageEl.textContent = 'Aguarde o Supabase ser inicializado...';
                 messageEl.className = 'text-center text-sm text-yellow-400';
@@ -877,49 +881,64 @@ async function criarPersonagem() {
     const nome = nameInput.value.trim();
     
     if (!nome || nome.length < 2) {
-        messageEl.textContent = 'O nome deve ter pelo menos 2 caracteres';
-        messageEl.className = 'text-center text-sm text-red-400';
-        messageEl.classList.remove('hidden');
+        if (messageEl) {
+            messageEl.textContent = 'O nome deve ter pelo menos 2 caracteres';
+            messageEl.className = 'text-center text-sm text-red-400';
+            messageEl.classList.remove('hidden');
+        }
         return;
     }
     
     if (!classeSelecionada) {
-        messageEl.textContent = 'Selecione uma classe';
-        messageEl.className = 'text-center text-sm text-red-400';
-        messageEl.classList.remove('hidden');
+        if (messageEl) {
+            messageEl.textContent = 'Selecione uma classe';
+            messageEl.className = 'text-center text-sm text-red-400';
+            messageEl.classList.remove('hidden');
+        }
         return;
     }
     
     // Desabilita botão
     createBtn.disabled = true;
     createBtn.textContent = 'Criando...';
-    messageEl.classList.add('hidden');
+    if (messageEl) messageEl.classList.add('hidden');
     
     try {
         // Verifica sessão atual primeiro
         const { data: { session }, error: sessionError } = await client.auth.getSession();
         
         if (sessionError) {
-            console.error('Erro ao obter sessão:', sessionError);
+            console.error('❌ [criarPersonagem] Erro ao obter sessão:', sessionError);
             throw new Error('Erro ao verificar autenticação. Tente fazer login novamente.');
         }
         
         if (!session) {
-            console.error('Nenhuma sessão encontrada');
+            console.error('❌ [criarPersonagem] Nenhuma sessão encontrada');
             throw new Error('Usuário não autenticado. Faça login novamente.');
         }
         
         const user = session.user;
         
         if (!user || !user.id) {
-            console.error('Usuário não encontrado na sessão:', session);
+            console.error('❌ [criarPersonagem] Usuário não encontrado na sessão:', session);
             throw new Error('Usuário não encontrado na sessão.');
         }
         
         // Atualiza variável global com o objeto completo do usuário
         window.currentUser = user;
         
-        console.log('✅ Usuário autenticado:', user.id, user.email);
+        console.log('✅ [criarPersonagem] Usuário autenticado:', user.id, user.email);
+        console.log('📋 [criarPersonagem] Dados do personagem:', { nome, classe: classeSelecionada });
+        
+        // INICIANDO_SALVAMENTO
+        console.log('INICIANDO_SALVAMENTO');
+        console.log('📤 [criarPersonagem] Enviando dados para Supabase...');
+        console.log('📤 [criarPersonagem] Payload:', {
+            id: user.id,
+            nome_usuario: nome,
+            classe: classeSelecionada,
+            nivel: 1
+        });
         
         // Cria perfil com ID do usuário logado
         const { data: profileData, error } = await client
@@ -937,6 +956,13 @@ async function criarPersonagem() {
                 updated_at: new Date().toISOString()
             }])
             .select();
+        
+        console.log('📥 [criarPersonagem] Resposta do Supabase:', { 
+            hasData: !!profileData, 
+            hasError: !!error,
+            errorCode: error?.code,
+            errorMessage: error?.message
+        });
         
         if (error) {
             console.error('Erro ao criar perfil:', error);
@@ -1146,6 +1172,9 @@ async function verificarAutenticacao() {
                 creationScreen.classList.remove('hidden');
                 console.log('✅ Tela de criação exibida (CSS de emergência aplicado)');
                 
+                // Carrega dados de criação (classes, avatares, etc)
+                carregarDadosCriacao();
+                
                 // FORÇA ESTILOS NO INPUT
                 const nameInput = document.getElementById('characterName');
                 if (nameInput) {
@@ -1206,6 +1235,101 @@ async function verificarAutenticacao() {
     
     // Expõe globalmente para o main.jsx usar
     window.verificarAutenticacao = verificarAutenticacao;
+}
+
+/**
+ * Carrega dados necessários para a tela de criação (classes, avatares, etc)
+ */
+async function carregarDadosCriacao() {
+    console.log('📦 [carregarDadosCriacao] Iniciando carregamento de dados...');
+    
+    try {
+        const client = getSupabaseClient();
+        
+        // Fallback: Classes padrão caso Supabase não esteja disponível ou tabela vazia
+        const classesPadrao = [
+            { id: 1, nome: 'O Hiperfocado', descricao: '+20% XP em Foco' },
+            { id: 2, nome: 'Explorador do Caos', descricao: 'Bônus aleatórios em Rotina' },
+            { id: 3, nome: 'Sentinela da Ordem', descricao: '2x Cristais com streak' },
+            { id: 4, nome: 'O Arquiteto de Fluxos', descricao: 'Equilibra Ordem e Hiperfoco' }
+        ];
+        
+        let dados = {
+            classes: classesPadrao,
+            carregado: true,
+            timestamp: new Date().toISOString(),
+            fonte: 'fallback'
+        };
+        
+        // Tenta buscar do Supabase se disponível
+        let dbClasses = [];
+        if (client) {
+            try {
+                // Tenta buscar classes de uma tabela 'classes' se existir
+                const { data: classesData, error: classesError } = await client
+                    .from('classes')
+                    .select('*')
+                    .order('id');
+                
+                if (!classesError && classesData && classesData.length > 0) {
+                    dbClasses = classesData;
+                    console.log('✅ [carregarDadosCriacao] Classes encontradas no Supabase:', dbClasses.length);
+                } else {
+                    console.log('ℹ️ [carregarDadosCriacao] Nenhuma classe no Supabase, usando fallback');
+                }
+            } catch (dbError) {
+                console.warn('⚠️ [carregarDadosCriacao] Erro ao buscar do Supabase, usando fallback:', dbError);
+                dados.fonte = 'fallback_erro';
+            }
+        } else {
+            console.warn('⚠️ [carregarDadosCriacao] Supabase não disponível, usando fallback');
+            dados.fonte = 'fallback_supabase_indisponivel';
+        }
+        
+        // Usa classes do banco se existirem, senão usa fallback
+        const classes = dbClasses.length > 0 ? dbClasses : classesPadrao;
+        dados.classes = classes;
+        dados.fonte = dbClasses.length > 0 ? 'supabase' : dados.fonte;
+        
+        console.log('DADOS_CRIACAO_CARREGADOS', dados);
+        console.log('✅ [carregarDadosCriacao] Dados carregados com sucesso');
+        
+        // Garante que os botões de classe estejam visíveis
+        const classeButtons = document.querySelectorAll('.classe-option');
+        const classeContainer = document.querySelector('.space-y-3');
+        if (classeButtons.length > 0) {
+            classeButtons.forEach(btn => {
+                btn.style.display = 'block';
+                btn.style.visibility = 'visible';
+                btn.style.opacity = '1';
+            });
+            console.log('✅ [carregarDadosCriacao] Botões de classe tornados visíveis:', classeButtons.length);
+        }
+        if (classeContainer) {
+            classeContainer.style.display = 'block';
+            classeContainer.style.visibility = 'visible';
+        }
+        
+        // Configura o input de nome após carregar dados
+        configurarInputNome();
+        
+    } catch (error) {
+        console.error('❌ [carregarDadosCriacao] Erro ao carregar dados:', error);
+        // Mesmo em caso de erro, usa fallback
+        const dadosFallback = {
+            classes: [
+                { id: 1, nome: 'O Hiperfocado', descricao: '+20% XP em Foco' },
+                { id: 2, nome: 'Explorador do Caos', descricao: 'Bônus aleatórios em Rotina' },
+                { id: 3, nome: 'Sentinela da Ordem', descricao: '2x Cristais com streak' },
+                { id: 4, nome: 'O Arquiteto de Fluxos', descricao: 'Equilibra Ordem e Hiperfoco' }
+            ],
+            carregado: true,
+            fonte: 'fallback_erro',
+            timestamp: new Date().toISOString()
+        };
+        console.log('DADOS_CRIACAO_CARREGADOS', dadosFallback);
+        configurarInputNome();
+    }
 }
 
 /**

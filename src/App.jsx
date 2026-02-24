@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Login from './Login';
 import { getSupabaseClient } from './main';
 import './App.css';
@@ -10,9 +10,11 @@ import './App.css';
 function App() {
   console.log('[APP.JSX] APP COMPONENT RENDERING');
   
+  // Estado de inicialização: começa carregando, não autenticado, sem mostrar login
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [showLogin, setShowLogin] = useState(true);
+  const [showLogin, setShowLogin] = useState(false); // Começa false, será definido após verificação
+  const authCheckedRef = useRef(false); // Ref para garantir que checkAuth só rode uma vez
 
   // Check de Montagem - verifica se o componente React está montando
   useEffect(() => {
@@ -24,12 +26,14 @@ function App() {
 
   /**
    * Verifica se o usuário está autenticado
+   * Executa apenas uma vez para evitar loops
    */
   const checkAuth = async () => {
     try {
       const client = getSupabaseClient();
       if (!client) {
         console.warn('[APP.JSX] Supabase não configurado');
+        setShowLogin(true);
         setIsLoading(false);
         return;
       }
@@ -38,16 +42,37 @@ function App() {
       
       if (error) {
         console.error('[APP.JSX] Erro ao verificar sessão:', error);
-        setIsAuthenticated(false);
         setShowLogin(true);
         setIsLoading(false);
         return;
       }
 
-      if (session) {
-        console.log('[APP.JSX] Sessão encontrada:', session.user?.email);
+      if (!session || !session.user) {
+        console.log('[APP.JSX] Nenhuma sessão encontrada - mostrando login');
+        setShowLogin(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // Verifica se o perfil existe antes de autenticar
+      try {
+        const { data: profile, error: profileError } = await client
+          .from('profiles')
+          .select('id, nome_usuario')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (profileError || !profile) {
+          console.log('[APP.JSX] Sessão encontrada mas perfil não existe - mostrando login');
+          setShowLogin(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log('[APP.JSX] Sessão e perfil válidos - autenticando');
         setIsAuthenticated(true);
         setShowLogin(false);
+        setIsLoading(false);
         
         // Chama verificarAutenticacao do script.js se disponível (sem await para não travar)
         if (window.verificarAutenticacao) {
@@ -55,24 +80,24 @@ function App() {
             console.warn('[APP.JSX] Erro ao verificar autenticação (não bloqueante):', err);
           });
         }
-      } else {
-        console.log('[APP.JSX] Nenhuma sessão encontrada');
-        setIsAuthenticated(false);
+      } catch (profileCheckError) {
+        console.error('[APP.JSX] Erro ao verificar perfil:', profileCheckError);
         setShowLogin(true);
+        setIsLoading(false);
       }
     } catch (error) {
       console.error('[APP.JSX] Erro ao verificar autenticação:', error);
-      setIsAuthenticated(false);
       setShowLogin(true);
-    } finally {
       setIsLoading(false);
     }
   };
 
   // Usa useCallback para evitar re-criação da função a cada render (previne re-renders)
   // IMPORTANTE: useCallback deve ser chamado ANTES de qualquer return condicional
-  const handleLoginSuccess = useCallback(async () => {
+  const handleLoginSuccess = useCallback(() => {
     console.log('[APP.JSX] onLoginSuccess chamado');
+    
+    // Atualiza estado imediatamente
     setIsAuthenticated(true);
     setShowLogin(false);
     
@@ -82,53 +107,33 @@ function App() {
       window.missionsDataLoaded = window.missionsDataLoaded || false;
     }
     
-    // Aguarda um pouco para garantir que o DOM está pronto
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Chama verificarAutenticacao do script.js para mostrar a tela correta
-    if (window.verificarAutenticacao) {
-      try {
-        await window.verificarAutenticacao();
-      } catch (err) {
-        console.error('[APP.JSX] Erro ao verificar autenticação:', err);
+    // Aguarda um pouco para garantir que o DOM está pronto, depois chama verificarAutenticacao
+    setTimeout(() => {
+      if (window.verificarAutenticacao) {
+        window.verificarAutenticacao().catch(err => {
+          console.error('[APP.JSX] Erro ao verificar autenticação:', err);
+        });
       }
-    } else {
-      // Tenta novamente após um delay
-      setTimeout(() => {
-        if (window.verificarAutenticacao) {
-          window.verificarAutenticacao().catch(err => {
-            console.error('[APP.JSX] Erro ao verificar autenticação (retry):', err);
-          });
-        }
-      }, 500);
-    }
-  }, []); // Array vazio - função não depende de estado
-
-  useEffect(() => {
-    // Verifica autenticação ao carregar
-    checkAuth();
-    
-    // Configura listener de mudanças de autenticação
-    const client = getSupabaseClient();
-    if (client) {
-      const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
-        console.log('[APP.JSX] Auth state changed:', event, session?.user?.email);
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          setIsAuthenticated(true);
-          setShowLogin(false);
-        } else if (event === 'SIGNED_OUT') {
-          setIsAuthenticated(false);
-          setShowLogin(true);
-        }
-      });
-      
-      return () => {
-        subscription.unsubscribe();
-      };
-    }
+    }, 100);
   }, []);
 
-  // Mostra loading enquanto verifica autenticação
+  useEffect(() => {
+    // Garante que só roda uma vez
+    if (authCheckedRef.current) {
+      return;
+    }
+    
+    // Garante que só roda quando isLoading é true
+    if (isLoading === false) {
+      return;
+    }
+    
+    authCheckedRef.current = true;
+    console.log('[APP.JSX] Iniciando verificação de autenticação...');
+    checkAuth();
+  }, [isLoading]); // Só depende de isLoading
+
+  // Renderização condicional limpa e sequencial
   if (isLoading) {
     return (
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -139,15 +144,19 @@ function App() {
     );
   }
 
-  // Mostra tela de login se não estiver autenticado
-  if (showLogin || !isAuthenticated) {
+  if (showLogin) {
     console.log('[APP.JSX] Renderizando Login');
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // Se autenticado, o script.js gerencia o resto da UI
-  console.log('[APP.JSX] Usuário autenticado - renderizando componente vazio');
-  return <div style={{ display: 'none' }} />;
+  if (isAuthenticated) {
+    console.log('[APP.JSX] Usuário autenticado - script.js gerencia o resto');
+    return <div style={{ display: 'none' }} />;
+  }
+
+  // Fallback: se chegou aqui, mostra login por segurança
+  console.log('[APP.JSX] Fallback - mostrando Login');
+  return <Login onLoginSuccess={handleLoginSuccess} />;
 }
 
 export default App;

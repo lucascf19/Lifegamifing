@@ -136,6 +136,9 @@ if (typeof window !== 'undefined') {
 // Importa o Supabase como módulo ES6
 import { createClient } from '@supabase/supabase-js';
 
+// Importa Capacitor Core para verificação de plataforma
+import { Capacitor } from '@capacitor/core';
+
 // Importa Capacitor App para Deep Linking
 // Renomeado para CapacitorApp para evitar conflito com o componente React App
 import { App as CapacitorApp } from '@capacitor/app';
@@ -309,93 +312,95 @@ try {
 
 // Configura Deep Linking para OAuth do Supabase
 // Captura o token quando o navegador retorna para o app após login OAuth
-// Configura Deep Linking para OAuth do Supabase
-// Captura o token quando o navegador retorna para o app após login OAuth
-if (typeof window !== 'undefined' && window.Capacitor !== undefined && CapacitorApp) {
+// APENAS em plataforma nativa
+if (Capacitor.isNativePlatform() && CapacitorApp) {
   try {
-    CapacitorApp.addListener('appUrlOpen', async (event) => {
-      try {
-        console.log('🔗 Deep Link capturado:', event.url);
-        
-        // Verifica se é uma URL de callback do Supabase
-        if (event.url && event.url.includes('capacitor://localhost')) {
-          // O Supabase pode retornar tokens em formato de hash (#) ou query string (?)
-          // Exemplo: capacitor://localhost#access_token=... ou capacitor://localhost?access_token=...
-          let urlString = event.url;
+    // Verifica se Capacitor está disponível antes de adicionar listener
+    if (CapacitorApp.addListener) {
+      CapacitorApp.addListener('appUrlOpen', async (event) => {
+        try {
+          console.log('🔗 Deep Link capturado:', event.url);
           
-          // Se tiver hash, converte para query string para facilitar parsing
-          if (urlString.includes('#')) {
-            urlString = urlString.replace('#', '?');
-          }
-          
-          // Extrai os parâmetros da URL
-          const url = new URL(urlString);
-          const accessToken = url.searchParams.get('access_token');
-          const refreshToken = url.searchParams.get('refresh_token');
-          const error = url.searchParams.get('error');
-          const errorDescription = url.searchParams.get('error_description');
-          
-          if (error) {
-            console.error('❌ Erro no OAuth:', error, errorDescription);
-            try {
-              alert(`Erro ao fazer login: ${errorDescription || error}`);
-            } catch (alertError) {
-              console.error('Erro ao mostrar alert:', alertError);
+          // Verifica se é uma URL de callback do Supabase
+          if (event.url && event.url.includes('capacitor://localhost')) {
+            // O Supabase pode retornar tokens em formato de hash (#) ou query string (?)
+            // Exemplo: capacitor://localhost#access_token=... ou capacitor://localhost?access_token=...
+            let urlString = event.url;
+            
+            // Se tiver hash, converte para query string para facilitar parsing
+            if (urlString.includes('#')) {
+              urlString = urlString.replace('#', '?');
             }
-            return;
-          }
-          
-          if (accessToken && refreshToken && supabaseClient) {
-            console.log('🔐 Tokens recebidos, estabelecendo sessão...');
             
-            // Define a sessão com os tokens recebidos usando setSession
-            const { data: sessionData, error: sessionError } = await supabaseClient.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken
-            });
+            // Extrai os parâmetros da URL
+            const url = new URL(urlString);
+            const accessToken = url.searchParams.get('access_token');
+            const refreshToken = url.searchParams.get('refresh_token');
+            const error = url.searchParams.get('error');
+            const errorDescription = url.searchParams.get('error_description');
             
-            if (sessionError) {
-              console.error('❌ Erro ao definir sessão:', sessionError);
+            if (error) {
+              console.error('❌ Erro no OAuth:', error, errorDescription);
               try {
-                alert(`Erro ao fazer login: ${sessionError.message}`);
+                alert(`Erro ao fazer login: ${errorDescription || error}`);
               } catch (alertError) {
                 console.error('Erro ao mostrar alert:', alertError);
               }
               return;
             }
             
-            if (sessionData.session) {
-              console.log('✅ Sessão OAuth estabelecida com sucesso!', sessionData.session.user?.email);
+            if (accessToken && refreshToken && supabaseClient) {
+              console.log('🔐 Tokens recebidos, estabelecendo sessão...');
               
-              // Atualiza a variável global currentUser
-              window.currentUser = sessionData.session.user;
-              window.hasActiveSession = true;
+              // Define a sessão com os tokens recebidos usando setSession
+              const { data: sessionData, error: sessionError } = await supabaseClient.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+              });
               
-              // Dispara evento para o script.js processar
-              // Chama sem await para não bloquear o processamento
-              if (window.verificarAutenticacao) {
-                window.verificarAutenticacao().catch(err => {
-                  console.warn('⚠️ Erro ao verificar autenticação (não bloqueante):', err);
-                });
+              if (sessionError) {
+                console.error('❌ Erro ao definir sessão:', sessionError);
+                try {
+                  alert(`Erro ao fazer login: ${sessionError.message}`);
+                } catch (alertError) {
+                  console.error('Erro ao mostrar alert:', alertError);
+                }
+                return;
+              }
+              
+              if (sessionData.session) {
+                console.log('✅ Sessão OAuth estabelecida com sucesso!', sessionData.session.user?.email);
+                
+                // Atualiza a variável global currentUser
+                window.currentUser = sessionData.session.user;
+                window.hasActiveSession = true;
+                
+                // Dispara evento para o script.js processar
+                // Chama sem await para não bloquear o processamento
+                if (window.verificarAutenticacao) {
+                  window.verificarAutenticacao().catch(err => {
+                    console.warn('⚠️ Erro ao verificar autenticação (não bloqueante):', err);
+                  });
+                } else {
+                  console.warn('⚠️ verificarAutenticacao não está disponível ainda');
+                }
               } else {
-                console.warn('⚠️ verificarAutenticacao não está disponível ainda');
+                console.error('❌ Sessão não foi criada');
               }
             } else {
-              console.error('❌ Sessão não foi criada');
+              console.warn('⚠️ Tokens não encontrados na URL:', event.url);
             }
-          } else {
-            console.warn('⚠️ Tokens não encontrados na URL:', event.url);
+          }
+        } catch (error) {
+          console.error('❌ Erro ao processar Deep Link:', error);
+          try {
+            alert(`Erro ao processar login: ${error.message}`);
+          } catch (alertError) {
+            console.error('Erro ao mostrar alert:', alertError);
           }
         }
-      } catch (error) {
-        console.error('❌ Erro ao processar Deep Link:', error);
-        try {
-          alert(`Erro ao processar login: ${error.message}`);
-        } catch (alertError) {
-          console.error('Erro ao mostrar alert:', alertError);
-        }
-      }
-    });
+      });
+    }
   } catch (error) {
     console.error('❌ Erro ao configurar listener de Deep Linking:', error);
   }
@@ -410,10 +415,9 @@ console.log('✅ Listener de Deep Linking configurado');
 // Configura action types e listeners de notificações
 async function configurarNotificacoesNativas() {
   try {
-    // Verifica se está no Capacitor
-    const isCapacitor = typeof window !== 'undefined' && window.Capacitor !== undefined;
-    if (!isCapacitor) {
-      console.log('ℹ️ Não está no Capacitor, pulando configuração de notificações nativas');
+    // Verifica se está em plataforma nativa
+    if (!Capacitor.isNativePlatform()) {
+      console.log('🌐 Rodando em modo Web: Notificações nativas ignoradas');
       return;
     }
 
@@ -483,8 +487,8 @@ async function configurarNotificacoesNativas() {
   }
 }
 
-// Configura notificações quando o Capacitor estiver disponível
-if (typeof window !== 'undefined' && window.Capacitor !== undefined) {
+// Configura notificações APENAS em plataforma nativa
+if (Capacitor.isNativePlatform()) {
   // Aguarda um pouco para garantir que tudo está carregado
   setTimeout(() => {
     try {
@@ -493,6 +497,8 @@ if (typeof window !== 'undefined' && window.Capacitor !== undefined) {
       console.error('❌ Erro ao configurar notificações:', error);
     }
   }, 500);
+} else {
+  console.log('🌐 Rodando em modo Web: Plugins nativos ignorados');
 }
 
 // Função para esconder o Splash Screen de forma segura
@@ -507,19 +513,23 @@ async function hideSplashScreenSafely() {
   }
 }
 
-// Esconde o Splash Screen após um delay seguro (garante que o app carregou)
-if (typeof window !== 'undefined') {
+// Esconde o Splash Screen APENAS em plataforma nativa
+if (Capacitor.isNativePlatform()) {
   // Aguarda o DOM estar pronto e o script.js carregar
-  window.addEventListener('DOMContentLoaded', () => {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        hideSplashScreenSafely();
+      }, 1000); // Delay de 1 segundo para garantir que tudo carregou
+    });
+    
+    // Fallback: esconde após 3 segundos mesmo se houver erro
     setTimeout(() => {
       hideSplashScreenSafely();
-    }, 1000); // Delay de 1 segundo para garantir que tudo carregou
-  });
-  
-  // Fallback: esconde após 3 segundos mesmo se houver erro
-  setTimeout(() => {
-    hideSplashScreenSafely();
-  }, 3000);
+    }, 3000);
+  }
+} else {
+  console.log('🌐 Rodando em modo Web: SplashScreen ignorado');
 }
 
 // React já foi renderizado no topo do arquivo (linha ~46)

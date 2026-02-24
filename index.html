@@ -39,8 +39,9 @@
             display: flex !important;
             flex-direction: column !important;
             justify-content: flex-start !important;
-            padding-top: 150px !important;
+            margin-top: 100px !important;
             align-items: center !important;
+            gap: 20px !important;
             /* DESATIVAR TODAS AS ANIMAÇÕES */
             animation: none !important;
             transition: none !important;
@@ -598,9 +599,9 @@
         </div>
         
         <!-- Tela de Criação de Personagem - CSS DE EMERGÊNCIA -->
-        <div id="characterCreationScreen" class="container-criacao hidden" style="background-color: #121212; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; z-index: 9999; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 150px; align-items: center; animation: none; transition: none;">
+        <div id="characterCreationScreen" class="container-criacao hidden" style="background-color: #121212; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; z-index: 9999; display: flex; flex-direction: column; justify-content: flex-start; margin-top: 100px; gap: 20px; align-items: center; animation: none; transition: none;">
             <!-- Input de Nome - SIMPLES -->
-            <div style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center;">
+            <div style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center; display: flex; flex-direction: column; justify-content: flex-start; background-color: #121212;">
                 <label for="characterName" class="block text-sm font-medium text-gray-300 mb-2">Nome do Avatar</label>
                 <input 
                     type="text" 
@@ -609,6 +610,7 @@
                     maxlength="30"
                     autofocus
                     autocomplete="off"
+                    class="w-full mt-40 px-4 py-3"
                     style="border: 2px solid white; padding: 15px; color: white; background: black; width: 80%; font-size: 18px; animation: none; transition: none;"
                 />
             </div>

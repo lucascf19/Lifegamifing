@@ -212,10 +212,6 @@ export default function Login({ onLoginSuccess }) {
         });
       }
       
-      // Aguarda um pouco para a sessão ser criada
-      console.log('⏳ Aguardando criação da sessão...');
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
       // LOGIN SILENCIOSO: Apenas log e callback, sem window.verificarAutenticacao
       console.log('🟢 [Login.jsx] LOGIN_OK - Login direto bem-sucedido');
       console.log('📋 [Login.jsx] Dados:', { hasUser: !!data?.user, hasSession: !!data?.session, userId: data?.user?.id });
