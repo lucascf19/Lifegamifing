@@ -912,9 +912,43 @@ async function criarPersonagem() {
             throw new Error('Erro ao verificar autenticação. Tente fazer login novamente.');
         }
         
+        // Se não houver sessão, força retorno para a tela de login
         if (!session) {
-            console.error('❌ [criarPersonagem] Nenhuma sessão encontrada');
-            throw new Error('Usuário não autenticado. Faça login novamente.');
+            console.error('❌ [criarPersonagem] Nenhuma sessão encontrada - redirecionando para login');
+            
+            // Limpa usuário global
+            window.currentUser = null;
+            
+            try {
+                // Garante que o usuário esteja deslogado
+                await client.auth.signOut();
+            } catch (signOutError) {
+                console.warn('⚠️ [criarPersonagem] Erro ao deslogar após sessão ausente:', signOutError);
+            }
+            
+            // Ajusta telas: esconde criação e app, mostra login
+            const loginScreen = document.getElementById('loginScreen');
+            const creationScreen = document.getElementById('characterCreationScreen');
+            const appContainer = document.getElementById('app-container');
+            
+            if (creationScreen) creationScreen.classList.add('hidden');
+            if (appContainer) appContainer.classList.add('hidden');
+            if (loginScreen) loginScreen.classList.remove('hidden');
+            
+            // Revalida autenticação pelo fluxo padrão, se disponível
+            if (window.verificarAutenticacao) {
+                try {
+                    window.verificarAutenticacao();
+                } catch (err) {
+                    console.error('❌ [criarPersonagem] Erro ao chamar verificarAutenticacao após sessão ausente:', err);
+                }
+            }
+            
+            // Restaura botão
+            createBtn.disabled = false;
+            createBtn.textContent = 'Iniciar Jornada';
+            
+            return;
         }
         
         const user = session.user;
@@ -1122,8 +1156,23 @@ async function verificarAutenticacao() {
             // Não lança o erro, apenas continua sem perfil (vai mostrar tela de criação)
         }
         
-        // Se não tiver perfil, mostra tela de criação
+        // Se não tiver perfil, mostra tela de criação (APENAS se houver usuário/sessão válidos)
         if (!profile) {
+            if (!session || !session.user) {
+                console.error('❌ [verificarAutenticacao] Tentativa de mostrar criação sem usuário/sessão válidos - forçando login');
+                
+                window.currentUser = null;
+                
+                const loginScreen = document.getElementById('loginScreen');
+                const creationScreen = document.getElementById('characterCreationScreen');
+                const appContainer = document.getElementById('app-container');
+                
+                if (creationScreen) creationScreen.classList.add('hidden');
+                if (appContainer) appContainer.classList.add('hidden');
+                if (loginScreen) loginScreen.classList.remove('hidden');
+                
+                return;
+            }
             console.log('--- RENDERIZANDO TELA DE CRIAÇÃO ---');
             console.log('📋 [script.js] Perfil não encontrado, mostrando tela de criação');
             
