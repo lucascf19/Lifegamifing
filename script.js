@@ -377,7 +377,7 @@ let eventosExternosInterval = null;
 if (typeof window !== 'undefined') {
   eventosExternosInterval = setInterval(() => {
     try {
-      verificarEventosExternos();
+    verificarEventosExternos();
     } catch (error) {
       console.error('❌ Erro ao verificar eventos externos:', error);
     }
@@ -469,29 +469,29 @@ let checkSupabaseInterval = null;
 if (typeof window !== 'undefined') {
   checkSupabaseInterval = setInterval(() => {
     try {
-      if (window.supabaseClient) {
+    if (window.supabaseClient) {
         supabaseClient = window.supabaseClient;
         console.log('%c✅ Supabase conectado (usando cliente do main.jsx)', 'color: #10b981; font-weight: bold;');
         if (checkSupabaseInterval) {
-          clearInterval(checkSupabaseInterval);
+        clearInterval(checkSupabaseInterval);
           checkSupabaseInterval = null;
         }
       }
     } catch (error) {
       console.error('❌ Erro ao verificar Supabase:', error);
     }
-  }, 50);
-  
-  // Limpa o intervalo após 5 segundos (timeout de segurança)
-  setTimeout(() => {
+}, 50);
+
+// Limpa o intervalo após 5 segundos (timeout de segurança)
+setTimeout(() => {
     if (checkSupabaseInterval) {
-      clearInterval(checkSupabaseInterval);
+    clearInterval(checkSupabaseInterval);
       checkSupabaseInterval = null;
     }
     if (!supabaseClient) {
-      console.warn('%c⚠️ Supabase não encontrado após 5 segundos', 'color: #f59e0b; font-weight: bold;');
+        console.warn('%c⚠️ Supabase não encontrado após 5 segundos', 'color: #f59e0b; font-weight: bold;');
     }
-  }, 5000);
+}, 5000);
 }
 
 // ============================================
@@ -540,7 +540,7 @@ async function loginWithOAuth(provider = 'google') {
             return;
         }
         
-        // Se retornou URL, abre no Browser do Capacitor
+        // Se retornou URL, abre no Browser do Capacitor (somente app nativo)
         if (data.url) {
             console.log('✅ URL de autenticação gerada:', data.url);
             
@@ -559,8 +559,8 @@ async function loginWithOAuth(provider = 'google') {
                     window.open(data.url, '_blank');
                 }
             } else {
-                // Web: redireciona normalmente
-                window.location.href = data.url;
+                // Web: redirecionamento manual desativado para não interferir na navegação do React
+                console.warn('⚠️ OAuth Web: redirecionamento automático desativado. Use login por e-mail/senha ou implemente fluxo de OAuth controlado pelo React.');
             }
         }
     } catch (error) {
@@ -609,9 +609,9 @@ async function enviarMagicLink() {
     if (!email || !email.includes('@')) {
         console.warn('⚠️ E-mail inválido:', email);
         if (loginMessage) {
-            loginMessage.textContent = 'Por favor, insira um e-mail válido';
-            loginMessage.className = 'text-center text-sm text-red-400';
-            loginMessage.classList.remove('hidden');
+        loginMessage.textContent = 'Por favor, insira um e-mail válido';
+        loginMessage.className = 'text-center text-sm text-red-400';
+        loginMessage.classList.remove('hidden');
         }
         return;
     }
@@ -619,23 +619,23 @@ async function enviarMagicLink() {
     if (!password || password.length < 3) {
         console.warn('⚠️ Senha inválida (mínimo 3 caracteres)');
         if (loginMessage) {
-            loginMessage.textContent = 'Por favor, insira uma senha válida';
-            loginMessage.className = 'text-center text-sm text-red-400';
-            loginMessage.classList.remove('hidden');
+        loginMessage.textContent = 'Por favor, insira uma senha válida';
+        loginMessage.className = 'text-center text-sm text-red-400';
+        loginMessage.classList.remove('hidden');
         }
         return;
     }
     
     // Desabilita botão
     if (loginBtn) {
-        loginBtn.disabled = true;
-        loginBtn.textContent = 'Entrando...';
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Entrando...';
     }
     if (loginMessage) {
-        loginMessage.classList.add('hidden');
+    loginMessage.classList.add('hidden');
     }
     if (loginSuccess) {
-        loginSuccess.classList.remove('hidden');
+    loginSuccess.classList.remove('hidden');
     }
     
     try {
@@ -667,7 +667,7 @@ async function enviarMagicLink() {
                     email: email,
                     password: password,
                     options: {
-                        emailRedirectTo: window.location.origin + window.location.pathname
+                        // Redirect padrão controlado externamente; evita dependência direta de window.location.*
                     }
                 });
                 
@@ -719,9 +719,9 @@ async function enviarMagicLink() {
         console.log('⏳ Aguardando criação da sessão...');
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        // Verifica autenticação automaticamente
-        console.log('🔍 Verificando autenticação...');
-        await verificarAutenticacao();
+        // Anteriormente: verificarAutenticacao() aqui fazia navegação automática.
+        // Agora, a navegação é controlada pelo React (App.jsx) via onAuthStateChange/session.
+        console.log('🔍 Login concluído - aguardando Guard do React (App.jsx) processar sessão');
         
     } catch (error) {
         console.error('❌ Erro ao fazer login (catch):', error);
@@ -731,7 +731,7 @@ async function enviarMagicLink() {
         
         // Feedback visual de erro
         if (loginSuccess) {
-            loginSuccess.classList.add('hidden');
+        loginSuccess.classList.add('hidden');
         }
         
         let errorMessage = 'Erro ao fazer login. Tente novamente.';
@@ -752,13 +752,13 @@ async function enviarMagicLink() {
         
         if (loginMessage) {
             loginMessage.textContent = errorMessage;
-            loginMessage.className = 'text-center text-sm text-red-400';
-            loginMessage.classList.remove('hidden');
+        loginMessage.className = 'text-center text-sm text-red-400';
+        loginMessage.classList.remove('hidden');
         }
         
         if (loginBtn) {
-            loginBtn.disabled = false;
-            loginBtn.textContent = 'Entrar';
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Entrar';
         }
     }
 }
@@ -882,18 +882,18 @@ async function criarPersonagem() {
     
     if (!nome || nome.length < 2) {
         if (messageEl) {
-            messageEl.textContent = 'O nome deve ter pelo menos 2 caracteres';
-            messageEl.className = 'text-center text-sm text-red-400';
-            messageEl.classList.remove('hidden');
+        messageEl.textContent = 'O nome deve ter pelo menos 2 caracteres';
+        messageEl.className = 'text-center text-sm text-red-400';
+        messageEl.classList.remove('hidden');
         }
         return;
     }
     
     if (!classeSelecionada) {
         if (messageEl) {
-            messageEl.textContent = 'Selecione uma classe';
-            messageEl.className = 'text-center text-sm text-red-400';
-            messageEl.classList.remove('hidden');
+        messageEl.textContent = 'Selecione uma classe';
+        messageEl.className = 'text-center text-sm text-red-400';
+        messageEl.classList.remove('hidden');
         }
         return;
     }
@@ -1081,12 +1081,7 @@ async function criarPersonagem() {
 async function verificarAutenticacao() {
     const client = getSupabaseClient();
     if (!client) {
-        console.warn('Supabase não configurado - mostrando app sem autenticação');
-        const loginScreen = document.getElementById('loginScreen');
-        const appContainer = document.getElementById('app-container');
-        if (loginScreen) loginScreen.classList.add('hidden');
-        if (appContainer) appContainer.classList.remove('hidden');
-        inicializarApp();
+        console.warn('Supabase não configurado - executar apenas atualização de dados locais');
         return;
     }
     
@@ -1098,13 +1093,10 @@ async function verificarAutenticacao() {
             throw sessionError;
         }
         
-        // Se não houver sessão, mostra tela de login
+        // Se não houver sessão, apenas zera currentUser.
+        // Quem decide mostrar tela de login agora é o Guard do React (App.jsx).
         if (!session) {
             window.currentUser = null;
-            const loginScreen = document.getElementById('loginScreen');
-            const appContainer = document.getElementById('app-container');
-            if (loginScreen) loginScreen.classList.remove('hidden');
-            if (appContainer) appContainer.classList.add('hidden');
             return;
         }
         
@@ -1156,130 +1148,23 @@ async function verificarAutenticacao() {
             // Não lança o erro, apenas continua sem perfil (vai mostrar tela de criação)
         }
         
-        // Se não tiver perfil, mostra tela de criação (APENAS se houver usuário/sessão válidos)
+        // Se não tiver perfil, apenas registra falta de perfil.
+        // A decisão de exibir tela de criação ou não fica a cargo da camada de UI (React).
         if (!profile) {
             if (!session || !session.user) {
                 console.error('❌ [verificarAutenticacao] Tentativa de mostrar criação sem usuário/sessão válidos - forçando login');
                 
                 window.currentUser = null;
-                
-                const loginScreen = document.getElementById('loginScreen');
-                const creationScreen = document.getElementById('characterCreationScreen');
-                const appContainer = document.getElementById('app-container');
-                
-                if (creationScreen) creationScreen.classList.add('hidden');
-                if (appContainer) appContainer.classList.add('hidden');
-                if (loginScreen) loginScreen.classList.remove('hidden');
-                
                 return;
             }
-            console.log('--- RENDERIZANDO TELA DE CRIAÇÃO ---');
-            console.log('📋 [script.js] Perfil não encontrado, mostrando tela de criação');
-            
-            const loginScreen = document.getElementById('loginScreen');
-            const creationScreen = document.getElementById('characterCreationScreen');
-            const appContainer = document.getElementById('app-container');
-            
-            console.log('🔍 [script.js] Elementos encontrados:', {
-                loginScreen: !!loginScreen,
-                creationScreen: !!creationScreen,
-                appContainer: !!appContainer
-            });
-            
-            // Remove bloqueios de loading
-            if (typeof window !== 'undefined') {
-                window.dashboardDataLoaded = true;
-                window.missionsDataLoaded = true;
-                console.log('✅ [script.js] Variáveis globais desbloqueadas');
-            }
-            
-            if (loginScreen) {
-                loginScreen.classList.add('hidden');
-                console.log('✅ [script.js] Login screen escondido');
-            } else {
-                console.error('❌ [script.js] loginScreen não encontrado!');
-            }
-            
-            if (creationScreen) {
-                // FORÇA ESTILOS DE EMERGÊNCIA
-                creationScreen.style.backgroundColor = '#121212';
-                creationScreen.style.height = '100vh';
-                creationScreen.style.width = '100vw';
-                creationScreen.style.position = 'fixed';
-                creationScreen.style.top = '0';
-                creationScreen.style.left = '0';
-                creationScreen.style.zIndex = '9999';
-                creationScreen.style.display = 'flex';
-                creationScreen.style.flexDirection = 'column';
-                creationScreen.style.justifyContent = 'flex-start';
-                creationScreen.style.paddingTop = '150px';
-                creationScreen.style.alignItems = 'center';
-                // DESATIVA ANIMAÇÕES
-                creationScreen.style.animation = 'none';
-                creationScreen.style.transition = 'none';
-                
-                creationScreen.classList.remove('hidden');
-                console.log('✅ Tela de criação exibida (CSS de emergência aplicado)');
-                
-                // Carrega dados de criação (classes, avatares, etc)
-                carregarDadosCriacao();
-                
-                // FORÇA ESTILOS NO INPUT
-                const nameInput = document.getElementById('characterName');
-                if (nameInput) {
-                    nameInput.style.border = '2px solid white';
-                    nameInput.style.padding = '15px';
-                    nameInput.style.color = 'white';
-                    nameInput.style.background = 'black';
-                    nameInput.style.width = '80%';
-                    nameInput.style.fontSize = '18px';
-                    nameInput.style.animation = 'none';
-                    nameInput.style.transition = 'none';
-                    
-                    // Auto-focus após um delay mínimo
-                    setTimeout(() => {
-                        console.log('✅ Campo de nome encontrado, aplicando foco...');
-                        nameInput.focus();
-                    }, 100);
-                } else {
-                    console.error('❌ Campo de nome não encontrado!');
-                }
-            } else {
-                console.error('❌ Elemento characterCreationScreen não encontrado!');
-            }
-            if (appContainer) appContainer.classList.add('hidden');
             return;
         }
         
-        // Tudo OK - mostra app e navega para missões
-        const loginScreen = document.getElementById('loginScreen');
-        const creationScreen = document.getElementById('characterCreationScreen');
-        const appContainer = document.getElementById('app-container');
-        
-        if (loginScreen) loginScreen.classList.add('hidden');
-        if (creationScreen) creationScreen.classList.add('hidden');
-        if (appContainer) appContainer.classList.remove('hidden');
-        
-        // Carrega perfil do usuário
+        // Tudo OK - carrega perfil do usuário e dados relacionados (XP, nível, etc)
         await carregarPerfilUsuario();
-        
-        // Inicializa app
-        inicializarApp();
-        
-        // Navega para página de Missões quando tiver personagem
-        setTimeout(() => {
-            if (window.navigationSystem) {
-                window.navigationSystem.navigateTo('missions');
-            }
-        }, 100);
         
     } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
-        // Em caso de erro, mostra tela de login
-        const loginScreen = document.getElementById('loginScreen');
-        const appContainer = document.getElementById('app-container');
-        if (loginScreen) loginScreen.classList.remove('hidden');
-        if (appContainer) appContainer.classList.add('hidden');
     }
     
     // Expõe globalmente para o main.jsx usar
@@ -1396,13 +1281,8 @@ function configurarAuthListener() {
                 window.currentUser = session.user;
                 console.log('✅ currentUser atualizado via onAuthStateChange:', window.currentUser.id);
             }
-            await verificarAutenticacao();
         } else if (event === 'SIGNED_OUT') {
             window.currentUser = null;
-            const loginScreen = document.getElementById('loginScreen');
-            const appContainer = document.getElementById('app-container');
-            if (loginScreen) loginScreen.classList.remove('hidden');
-            if (appContainer) appContainer.classList.add('hidden');
         }
     });
 }
@@ -2235,58 +2115,58 @@ class MissionsSystem {
         
         this._renderTimeout = setTimeout(() => {
             requestAnimationFrame(() => {
-                container.innerHTML = '';
+        container.innerHTML = '';
 
-                // Identifica a missão mais importante (primeira não completada ou a de maior recompensa)
-                const incompleteMissions = this.missions.filter(m => !m.completed);
-                const mostImportantMission = incompleteMissions.length > 0 
-                    ? incompleteMissions.reduce((prev, current) => 
-                        (current.reward || 0) > (prev.reward || 0) ? current : prev
-                      )
-                    : null;
+        // Identifica a missão mais importante (primeira não completada ou a de maior recompensa)
+        const incompleteMissions = this.missions.filter(m => !m.completed);
+        const mostImportantMission = incompleteMissions.length > 0 
+            ? incompleteMissions.reduce((prev, current) => 
+                (current.reward || 0) > (prev.reward || 0) ? current : prev
+              )
+            : null;
 
                 // Limita renderização a 50 missões por vez para performance
                 const maxMissions = 50;
                 const missionsToRender = this.missions.slice(0, maxMissions);
 
                 missionsToRender.forEach(mission => {
-                    const card = document.createElement('div');
-                    // Usa cinza muito escuro (#121212) para o fundo do card
-                    const bgColor = 'bg-[#121212]';
-                    
-                    // Define borda colorida baseada na categoria/cor da missão
-                    let borderColor = 'border-gray-800';
-                    let borderClass = '';
-                    if (mission.color === 'green') {
-                        borderColor = 'border-green';
-                        borderClass = 'border-green';
-                    } else if (mission.color === 'blue') {
-                        borderColor = 'border-blue';
-                        borderClass = 'border-blue';
-                    } else if (mission.color === 'orange') {
-                        borderColor = 'border-orange';
-                        borderClass = 'border-orange';
-                    }
-                    
-                    // Borda fina (1px) com cor da categoria
-                    const isMostImportant = mostImportantMission && mission.id === mostImportantMission.id;
-                    
-                    card.className = `w-full ${bgColor} ${borderClass} border rounded-2xl p-5 shadow-lg card-touchable ${mission.completed ? 'opacity-60' : ''}`;
-                    card.style.borderWidth = '1px';
-                    card.style.backgroundColor = '#121212';
+            const card = document.createElement('div');
+            // Usa cinza muito escuro (#121212) para o fundo do card
+            const bgColor = 'bg-[#121212]';
+            
+            // Define borda colorida baseada na categoria/cor da missão
+            let borderColor = 'border-gray-800';
+            let borderClass = '';
+            if (mission.color === 'green') {
+                borderColor = 'border-green';
+                borderClass = 'border-green';
+            } else if (mission.color === 'blue') {
+                borderColor = 'border-blue';
+                borderClass = 'border-blue';
+            } else if (mission.color === 'orange') {
+                borderColor = 'border-orange';
+                borderClass = 'border-orange';
+            }
+            
+            // Borda fina (1px) com cor da categoria
+            const isMostImportant = mostImportantMission && mission.id === mostImportantMission.id;
+            
+            card.className = `w-full ${bgColor} ${borderClass} border rounded-2xl p-5 shadow-lg card-touchable ${mission.completed ? 'opacity-60' : ''}`;
+            card.style.borderWidth = '1px';
+            card.style.backgroundColor = '#121212';
 
-                    if (mission.type === 'checklist') {
-                        card.innerHTML = this.renderChecklistCard(mission);
-                    } else if (mission.type === 'counter') {
-                        card.innerHTML = this.renderCounterCard(mission);
-                    } else if (mission.type === 'timer') {
-                        card.innerHTML = this.renderTimerCard(mission);
-                    } else {
-                        card.innerHTML = this.renderChecklistCard(mission);
-                    }
+            if (mission.type === 'checklist') {
+                card.innerHTML = this.renderChecklistCard(mission);
+            } else if (mission.type === 'counter') {
+                card.innerHTML = this.renderCounterCard(mission);
+            } else if (mission.type === 'timer') {
+                card.innerHTML = this.renderTimerCard(mission);
+            } else {
+                card.innerHTML = this.renderChecklistCard(mission);
+            }
 
-                    container.appendChild(card);
-                });
+            container.appendChild(card);
+        });
             });
         }, 10); // Debounce de 10ms
     }
@@ -3648,10 +3528,10 @@ class MissionsBoard {
         
         this._renderTimeout = setTimeout(() => {
             requestAnimationFrame(() => {
-                grid.innerHTML = '';
+        grid.innerHTML = '';
 
-                const activeMissions = this.missions.filter(m => !m.completed);
-                const completedMissions = this.missions.filter(m => m.completed);
+        const activeMissions = this.missions.filter(m => !m.completed);
+        const completedMissions = this.missions.filter(m => m.completed);
 
                 // Limita renderização a 50 missões por vez para performance
                 const maxMissions = 50;
@@ -3659,14 +3539,14 @@ class MissionsBoard {
                 const completedToRender = completedMissions.slice(0, maxMissions - activeToRender.length);
 
                 activeToRender.forEach(mission => {
-                    grid.appendChild(this.createMissionCard(mission));
-                });
+            grid.appendChild(this.createMissionCard(mission));
+        });
 
                 completedToRender.forEach(mission => {
-                    grid.appendChild(this.createMissionCard(mission, true));
-                });
+            grid.appendChild(this.createMissionCard(mission, true));
+        });
 
-                this.updateEmptyState();
+        this.updateEmptyState();
             });
         }, 10); // Debounce de 10ms
     }
@@ -4973,13 +4853,13 @@ function startFocusTimer() {
     
     focusTimerInterval = setInterval(() => {
         try {
-            const elapsed = Math.floor((Date.now() - focusTimerStartTime) / 1000);
-            focusTimerRemaining = Math.max(0, 600 - elapsed);
-            
-            updateFocusTimerDisplay();
-            
-            if (focusTimerRemaining <= 0) {
-                finishFocusTimer();
+        const elapsed = Math.floor((Date.now() - focusTimerStartTime) / 1000);
+        focusTimerRemaining = Math.max(0, 600 - elapsed);
+        
+        updateFocusTimerDisplay();
+        
+        if (focusTimerRemaining <= 0) {
+            finishFocusTimer();
             }
         } catch (error) {
             console.error('❌ Erro no timer de foco:', error);
@@ -5096,8 +4976,8 @@ async function finishFocusTimer() {
 function updateFocusTimerDisplay() {
     const display = document.getElementById('focusTimerDisplay');
     const displayModal = document.getElementById('focusTimerDisplay-modal');
-    const minutes = Math.floor(focusTimerRemaining / 60);
-    const seconds = focusTimerRemaining % 60;
+        const minutes = Math.floor(focusTimerRemaining / 60);
+        const seconds = focusTimerRemaining % 60;
     const tempoFormatado = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     
     if (display) {
@@ -5472,7 +5352,7 @@ async function ativarEscudoCompromisso(minutosCustomizados = null) {
     localStorage.setItem('escudoExpiraEm', expiraEm.toISOString());
     
                 // Inicia timer (já atualiza cronômetro visual)
-                iniciarTimerCompromisso();
+    iniciarTimerCompromisso();
                 
                 // Garante que o cronômetro está visível
                 atualizarCronometroEscudo();
@@ -5592,16 +5472,16 @@ function iniciarTimerCompromisso() {
     
     escudoCompromissoInterval = setInterval(() => {
         try {
-            escudoCompromissoTempoRestante--;
-            
-            // Salva tempo restante
-            localStorage.setItem('escudoCompromissoTempoRestante', escudoCompromissoTempoRestante.toString());
+        escudoCompromissoTempoRestante--;
+        
+        // Salva tempo restante
+        localStorage.setItem('escudoCompromissoTempoRestante', escudoCompromissoTempoRestante.toString());
             
             // Atualiza cronômetro visual
             atualizarCronometroEscudo();
-            
-            if (escudoCompromissoTempoRestante <= 0) {
-                finalizarEscudoCompromisso();
+        
+        if (escudoCompromissoTempoRestante <= 0) {
+            finalizarEscudoCompromisso();
             }
         } catch (error) {
             console.error('❌ Erro no timer de escudo:', error);
@@ -6664,10 +6544,10 @@ function iniciarAtividadeFisica() {
     
     atividadeFisicaTimer = setInterval(() => {
         try {
-            if (!atividadeFisicaPausado) {
-                atividadeFisicaTempoRestante--;
-                
-                const display = document.getElementById('atividade-timer-display');
+        if (!atividadeFisicaPausado) {
+            atividadeFisicaTempoRestante--;
+            
+            const display = document.getElementById('atividade-timer-display');
                 const displayModal = document.getElementById('atividade-timer-display-modal');
                 const minutos = Math.floor(atividadeFisicaTempoRestante / 60);
                 const segundos = atividadeFisicaTempoRestante % 60;
@@ -6678,10 +6558,10 @@ function iniciarAtividadeFisica() {
                 }
                 if (displayModal) {
                     displayModal.textContent = tempoFormatado;
-                }
-                
-                if (atividadeFisicaTempoRestante <= 0) {
-                    finalizarAtividadeFisica();
+            }
+            
+            if (atividadeFisicaTempoRestante <= 0) {
+                finalizarAtividadeFisica();
                 }
             }
         } catch (error) {
@@ -8679,7 +8559,7 @@ function inicializarApp() {
     }
     resetRefeicoesInterval = setInterval(() => {
         try {
-            verificarResetRefeicoes();
+        verificarResetRefeicoes();
         } catch (error) {
             console.error('❌ Erro ao verificar reset de refeições:', error);
         }
@@ -8749,29 +8629,33 @@ function inicializarApp() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+/**
+ * Função “antiga” de inicialização da UI (HTML/script.js).
+ * Só deve ser chamada quando o container principal já existir.
+ */
+function iniciarAppAntigo() {
     // Primeiro, garante que a tela de login está visível inicialmente
     const loginScreen = document.getElementById('loginScreen');
     const creationScreen = document.getElementById('characterCreationScreen');
     const appContainer = document.getElementById('app-container');
-    
+
     // Esconde todas as telas inicialmente
     if (loginScreen) loginScreen.classList.add('hidden');
     if (creationScreen) creationScreen.classList.add('hidden');
     if (appContainer) appContainer.classList.add('hidden');
-    
+
     // Configura listener de autenticação (deve ser primeiro)
     configurarAuthListener();
-    
+
     // Configura input de nome
     configurarInputNome();
-    
+
     // Configura botão de sincronizar realidade
     const finalizarBtn = document.getElementById('btn-finalizar-personagem');
     if (finalizarBtn) {
         finalizarBtn.addEventListener('click', sincronizarRealidade);
     }
-    
+
     // Configura botão de login
     const loginBtn = document.getElementById('loginBtn');
     if (loginBtn) {
@@ -8782,15 +8666,11 @@ document.addEventListener('DOMContentLoaded', () => {
             enviarMagicLink();
         });
     }
-    
-    // Verifica autenticação ao carregar (vai decidir qual tela mostrar)
-    // Se houver sessão, pula login e vai direto para dashboard
-    verificarAutenticacao();
-    
+
     // Permite Enter nos campos de login
     const emailInput = document.getElementById('loginEmail');
     const passwordInput = document.getElementById('loginPassword');
-    
+
     if (emailInput) {
         emailInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -8802,7 +8682,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
+
     if (passwordInput) {
         passwordInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -8810,6 +8690,30 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+}
+
+/**
+ * Inicializa a camada de interface controlada pelo script.js
+ * Só executa se os elementos de UI realmente existirem no DOM.
+ * Isso evita brigar com o React enquanto ele ainda está montando.
+ */
+function inicializarInterface() {
+    // Se o container do dashboard/app não existir, significa que o React
+    // ainda pode estar na tela de login. Não prossegue.
+    const appContainer = document.getElementById('app-container');
+    const dashboardPage = document.getElementById('dashboard-page');
+
+    if (!appContainer && !dashboardPage) {
+        console.log('Aguardando Login pelo React...');
+        return;
+    }
+
+    iniciarAppAntigo();
+}
+
+// Mantém o gatilho em DOMContentLoaded, mas protegido pelo inicializarInterface()
+document.addEventListener('DOMContentLoaded', () => {
+    inicializarInterface();
 });
 
 // Exemplo da lógica profissional que o Cursor deve seguir:

@@ -1,5 +1,6 @@
-/* Tailwind é carregado via CDN no index.html */
-/* Não precisamos das diretivas @tailwind aqui */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
     --amoled-black: #000000;

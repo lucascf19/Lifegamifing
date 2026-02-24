@@ -146,9 +146,6 @@ import { App as CapacitorApp } from '@capacitor/app';
 // Importa Capacitor Local Notifications
 import { LocalNotifications } from '@capacitor/local-notifications';
 
-// Importa SplashScreen para controle seguro
-import { SplashScreen } from '@capacitor/splash-screen';
-
 // Importa os estilos
 import './index.css';
 
@@ -499,37 +496,6 @@ if (Capacitor.isNativePlatform()) {
   }, 500);
 } else {
   console.log('🌐 Rodando em modo Web: Plugins nativos ignorados');
-}
-
-// Função para esconder o Splash Screen de forma segura
-async function hideSplashScreenSafely() {
-  try {
-    if (SplashScreen) {
-      await SplashScreen.hide();
-      console.log('✅ Splash Screen escondido com sucesso');
-    }
-  } catch (error) {
-    console.warn('⚠️ Erro ao esconder Splash Screen:', error);
-  }
-}
-
-// Esconde o Splash Screen APENAS em plataforma nativa
-if (Capacitor.isNativePlatform()) {
-  // Aguarda o DOM estar pronto e o script.js carregar
-  if (typeof window !== 'undefined') {
-    window.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => {
-        hideSplashScreenSafely();
-      }, 1000); // Delay de 1 segundo para garantir que tudo carregou
-    });
-    
-    // Fallback: esconde após 3 segundos mesmo se houver erro
-    setTimeout(() => {
-      hideSplashScreenSafely();
-    }, 3000);
-  }
-} else {
-  console.log('🌐 Rodando em modo Web: SplashScreen ignorado');
 }
 
 // React já foi renderizado no topo do arquivo (linha ~46)
