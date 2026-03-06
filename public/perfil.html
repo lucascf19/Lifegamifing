@@ -25,9 +25,11 @@
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
   >
 
-  <!-- CSS global -->
-  <link rel="stylesheet" href="/style.css">
+  <!-- CSS global compilado pelo Vite/Tailwind -->
+  <link rel="stylesheet" href="./assets/index.css">
 
+  <!-- Navegação dinâmica -->
+  <script src="/nav.js" defer></script>
   <!-- Lógica core do RPG -->
   <script src="/script.js" defer></script>
 </head>
@@ -189,32 +191,8 @@
         </div>
       </main>
 
-      <!-- Bottom Navigation compartilhada -->
-      <nav class="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-900 bottom-nav" 
-      style="z-index: 999999; pointer-events: auto !important;">
-        <div class="flex items-center justify-around h-16">
-          <a href="index.html" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
-            <span class="text-2xl">🏰</span>
-            <span class="text-xs font-medium">Dashboard</span>
-          </a>
-          <a href="missoes.html" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
-            <span class="text-2xl">⚔️</span>
-            <span class="text-xs font-medium">Missões</span>
-          </a>
-          <a href="index.html#inventory-page" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
-            <span class="text-2xl">🎒</span>
-            <span class="text-xs font-medium">Inventário</span>
-          </a>
-          <a href="index.html#stats-page" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
-            <span class="text-2xl">📊</span>
-            <span class="text-xs font-medium">Estatísticas</span>
-          </a>
-          <a href="perfil.html" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-white transition-colors" style="min-width: 28px; min-height: 28px;">
-            <span class="text-2xl">👤</span>
-            <span class="text-xs font-medium">Perfil</span>
-          </a>
-        </div>
-      </nav>
+      <!-- Navegação inferior dinâmica - será preenchida via JavaScript (renderizarNavegacao) -->
+      <nav id="bottom-nav" class="fixed bottom-0 w-full bg-black border-t border-gray-800 flex justify-around"></nav>
     </div>
   </div>
 </body>

@@ -12,6 +12,10 @@
 window.classeSelecionada = null;
 
 // ============================================
+// CONFIGURAÇÃO GLOBAL DE PÁGINAS DO APP (Bottom Nav)
+// ============================================
+
+// ============================================
 // STUBS INICIAIS - Garantir que funções críticas existam antes de qualquer uso
 // Estas funções serão sobrescritas com a implementação completa mais abaixo
 // ============================================
@@ -2190,6 +2194,11 @@ window.navigationSystem = {
 
         if (initial) {
             this.navigateTo(initial);
+        }
+
+        // Renderiza navegação inferior dinâmica (se existir função global)
+        if (typeof window.renderizarNavegacao === 'function') {
+            window.renderizarNavegacao();
         }
 
         // Adiciona event listeners aos botões de navegação apenas se tiver data-page

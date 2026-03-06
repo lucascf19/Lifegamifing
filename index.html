@@ -27,8 +27,10 @@
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
   >
  
- <!-- Lógica core do RPG - carregada cedo mas executada após o parse (defer) -->
- <script src="/script.js" defer></script>
+  <!-- Navegação dinâmica -->
+  <script src="/nav.js" defer></script>
+  <!-- Lógica core do RPG - carregada cedo mas executada após o parse (defer) -->
+  <script src="/script.js" defer></script>
  
  <style>
  @keyframes pulse-red {
@@ -1021,7 +1023,7 @@ justify-center text-4xl transition-all hover:border-blue-500">
  <!-- Limpeza -->
  <button onclick="window.expandFocusTimer(); (function(){const limpezaModal2 
 = document.getElementById('limpezaTimerModal'); if (limpezaModal2) 
-limpezaModal2.classList.remove('hidden');})();" id="status-limpeza-dashboard" class="flexshrink-0 w-[80px] h-[80px] rounded-full bg-[#121212] border-2 border-gray-700 flex itemscenter justify-center text-4xl transition-all hover:border-yellow-500">
+limpezaModal2.classList.remove('hidden');})();" id="status-limpeza-dashboard" class="flex-shrink-0 w-[80px] h-[80px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-4xl transition-all hover:border-yellow-500">
 <span>🧹</span>
  </button>
  
@@ -1436,32 +1438,8 @@ rounded-lg font-semibold transition-colors"
  </div>
  </main>
  
-<!-- Bottom Navigation - FORA DO MAIN PARA NÃO SER AFETADA POR OVERFLOW -->
-<nav class="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-900 bottom-nav" 
-style="z-index: 999999; pointer-events: auto !important;">
-<div class="flex items-center justify-around h-16">
-  <a href="index.html" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
-    <span class="text-2xl">🏰</span>
-    <span class="text-xs font-medium">Dashboard</span>
-  </a>
-  <a href="missoes.html" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
-    <span class="text-2xl">⚔️</span>
-    <span class="text-xs font-medium">Missões</span>
-  </a>
-  <a href="index.html#inventory-page" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
-    <span class="text-2xl">🎒</span>
-    <span class="text-xs font-medium">Inventário</span>
-  </a>
-  <a href="index.html#stats-page" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
-    <span class="text-2xl">📊</span>
-    <span class="text-xs font-medium">Estatísticas</span>
-  </a>
-  <a href="perfil.html" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
-    <span class="text-2xl">👤</span>
-    <span class="text-xs font-medium">Perfil</span>
-  </a>
-</div>
-</nav>
+<!-- Navegação inferior dinâmica - será preenchida via JavaScript (renderizarNavegacao) -->
+<nav id="bottom-nav" class="fixed bottom-0 w-full bg-black border-t border-gray-800 flex justify-around"></nav>
  </div>
  
  <!-- Modais e Overlays -->
@@ -1612,19 +1590,19 @@ class="w-full mt-3 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg
  </div>
  </div>
  
- <!-- Modal Timer de Limpeza -->
- <div id="limpezaTimerModal" class="hidden fixed inset-0 bg-black/80 z-50 flex itemscenter justify-center p-4">
+<!-- Modal Timer de Limpeza -->
+<div id="limpezaTimerModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
  <div class="bg-[#121212] border border-gray-800 rounded-2xl p-6 max-w-sm w-full">
  <h3 class="text-lg font-bold mb-4 text-center"> Organizar a casa</h3>
  <div id="focusTimerExpanded-modal" class="mb-4">
  <div class="text-center mb-4">
- <div id="focusTimerDisplay-modal" class="text-4xl font-bold text-orange-400 mb2">10:00</div>
+<div id="focusTimerDisplay-modal" class="text-4xl font-bold text-orange-400 mb-2">10:00</div>
  <div class="text-sm text-gray-400">Tempo restante</div>
  </div>
  <div class="flex gap-2">
 <button id="focusPauseBtn-modal" onclick="window.pauseFocusTimer()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-3 rounded-lg font-semibold">Pausar</button>
 <button id="focusResumeBtn-modal" onclick="window.startFocusTimer()" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-lg font-semibold hidden">Retomar</button>
-<button onclick="window.finishFocusTimer(); document.getElementById('limpezaTimerModal').classList.add('hidden');" class="flex-1 bggreen-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold">Finalizar</button>
+<button onclick="window.finishFocusTimer(); document.getElementById('limpezaTimerModal').classList.add('hidden');" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold">Finalizar</button>
  </div>
  </div>
  <button 
@@ -1633,9 +1611,9 @@ window.collapseFocusTimer === 'function') { window.collapseFocusTimer(); }" clas
  </div>
  </div>
  
- <!-- Modal Cadastro de Medicamento -->
- <div id="medicamentoModal" class="hidden fixed inset-0 bg-black/80 z-50 flex itemscenter justify-center p-4">
- <div class="bg-[#121212] border border-gray-800 rounded-2xl p-6 max-w-sm w-full maxh-[90vh] overflow-y-auto">
+<!-- Modal Cadastro de Medicamento -->
+<div id="medicamentoModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+<div class="bg-[#121212] border border-gray-800 rounded-2xl p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto">
  <h3 class="text-lg font-bold mb-4"> Novo Medicamento</h3>
  <form id="medicamentoForm" onsubmit="salvarMedicamento(event); return false;" 
 class="space-y-4">
@@ -1646,7 +1624,7 @@ Medicamento</label>
  type="text" 
  id="medicamentoNome" 
  placeholder="Ex: Paracetamol"
- class="w-full px-4 py-2 bg-[#1a1a1a] border border-gray-700 rounded-lg textwhite focus:outline-none focus:ring-2 focus:ring-indigo-500"
+ class="w-full px-4 py-2 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
  required
  />
  </div>
@@ -1656,7 +1634,7 @@ Medicamento</label>
  type="text" 
  id="medicamentoDose" 
  placeholder="Ex: 500mg, 1 comprimido"
- class="w-full px-4 py-2 bg-[#1a1a1a] border border-gray-700 rounded-lg textwhite focus:outline-none focus:ring-2 focus:ring-indigo-500"
+ class="w-full px-4 py-2 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
  />
  </div>
  <div>
@@ -1664,7 +1642,7 @@ Medicamento</label>
  <input 
  type="time" 
  id="medicamentoHorario" 
- class="w-full px-4 py-2 bg-[#1a1a1a] border border-gray-700 rounded-lg textwhite focus:outline-none focus:ring-2 focus:ring-indigo-500"
+ class="w-full px-4 py-2 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
  required
  />
  </div>
@@ -1676,35 +1654,35 @@ Inicial</label>
  id="medicamentoEstoque" 
  min="0"
  placeholder="Quantidade"
- class="w-full px-4 py-2 bg-[#1a1a1a] border border-gray-700 rounded-lg textwhite focus:outline-none focus:ring-2 focus:ring-indigo-500"
+class="w-full px-4 py-2 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
  required
  />
  </div>
  <div class="flex gap-2">
- <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 textwhite px-4 py-2 rounded-lg font-semibold btn-min-height">Salvar</button>
- <button type="button" onclick="fecharModalMedicamento()" class="flex-1 bggray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold btn-minheight">Cancelar</button>
+<button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold btn-min-height">Salvar</button>
+<button type="button" onclick="fecharModalMedicamento()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold btn-min-height">Cancelar</button>
  </div>
  </form>
  </div>
  </div>
  
- <div id="recuperacaoOverlay" class="hidden fixed inset-0 bg-black/90 z-40 flex itemscenter justify-center p-4">
+<div id="recuperacaoOverlay" class="hidden fixed inset-0 bg-black/90 z-40 flex items-center justify-center p-4">
  <div class="text-center">
  <div class="text-6xl mb-4"> </div>
  <h2 class="text-2xl font-bold mb-4">Modo Recuperação Ativo</h2>
  <p class="text-gray-400 mb-6">Tome seu tempo. Quando estiver pronto, clique 
 abaixo.</p>
- <button onclick="desativarEscudoRecuperacao()" class="bg-indigo-600 hover:bgindigo-700 text-white px-8 py-4 rounded-xl font-semibold btn-min-height text-lg">
+<button onclick="desativarEscudoRecuperacao()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl font-semibold btn-min-height text-lg">
  Estou pronto para voltar
  </button>
  </div>
  </div>
  
- <div id="escudoRotinaIndicador" class="hidden fixed top-20 left-4 right-4 bg-yellow600/20 border border-yellow-500/50 rounded-xl p-3 z-30">
+<div id="escudoRotinaIndicador" class="hidden fixed top-20 left-4 right-4 bg-yellow-600/20 border border-yellow-500/50 rounded-xl p-3 z-30">
  <div class="flex items-center justify-between">
  <div class="escudo-titulo text-yellow-300 font-semibold"> Escudo de Rotina 
 Ativo</div>
- <button id="concluirEventoBtn" onclick="concluirEventoAgenda()" class="bg-yellow600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-semibold text-sm btn-minheight">
+<button id="concluirEventoBtn" onclick="concluirEventoAgenda()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-semibold text-sm btn-min-height">
  Concluir Evento
  </button>
  </div>

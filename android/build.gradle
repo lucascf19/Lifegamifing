@@ -8,7 +8,7 @@ buildscript {
     }
     dependencies {
         // Alinhado com os plugins do Capacitor (node_modules usam 8.13.0)
-        classpath 'com.android.tools.build:gradle:9.0.1'
+        classpath 'com.android.tools.build:gradle:9.1.0'
         classpath 'com.google.gms:google-services:4.4.4'
 
         // NOTE: Do not place your application dependencies here; they belong

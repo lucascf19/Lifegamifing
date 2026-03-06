@@ -420,6 +420,11 @@ nav[class*="fixed"][class*="bottom-0"] * {
     background-color: rgba(99, 102, 241, 0.1) !important; /* Fundo sutil quando ativo */
 }
 
+/* Estado ativo explícito via classe .active (para navegação dinâmica) */
+.nav-bottom-btn.active {
+    color: #ffffff !important;
+}
+
 /* 3. O Header fica fixo sem empurrar ninguém */
 #header-rpg {
     position: sticky;
