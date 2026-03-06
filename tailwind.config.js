@@ -2,6 +2,8 @@
 export default {
   content: [
     "./index.html",
+    "./missoes.html",
+    "./perfil.html",
     "./src/**/*.{js,jsx,ts,tsx}",
     "./public/script.js"
   ],
@@ -10,4 +12,5 @@ export default {
   },
   plugins: []
 }
+
 

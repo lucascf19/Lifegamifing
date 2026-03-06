@@ -3,8 +3,6 @@
  * Versão Estabilizada com Handshake React-JS
  */
  
-console.log('🚀 script.js iniciando carregamento...');
-console.log('✅ SCRIPT.JS CARREGADO NA PASTA PUBLIC');
 
 // ============================================
 // DEFINIÇÕES INICIAIS - Garantir que funções críticas existam antes de qualquer uso
@@ -19,39 +17,30 @@ window.classeSelecionada = null;
 // ============================================
 
 window.collapseFocusTimer = function() {
-    console.log('[collapseFocusTimer] Função ainda não inicializada completamente');
 };
 
 window.expandFocusTimer = function() {
-    console.log('[expandFocusTimer] Função ainda não inicializada completamente');
 };
 
 window.addWaterInstant = function() {
-    console.log('[addWaterInstant] Função ainda não inicializada completamente');
 };
 
 window.openWaterSettings = function() {
-    console.log('[openWaterSettings] Função ainda não inicializada completamente');
 };
 
 window.marcarRefeicao = function() {
-    console.log('[marcarRefeicao] Função ainda não inicializada completamente');
 };
 
 window.toggleFAB = function() {
-    console.log('[toggleFAB] Função ainda não inicializada completamente');
 };
 
 window.startFocusTimer = function() {
-    console.log('[startFocusTimer] Função ainda não inicializada completamente');
 };
 
 window.pauseFocusTimer = function() {
-    console.log('[pauseFocusTimer] Função ainda não inicializada completamente');
 };
 
 window.finishFocusTimer = function() {
-    console.log('[finishFocusTimer] Função ainda não inicializada completamente');
 };
 
 // Função global para selecionar classe
@@ -232,7 +221,6 @@ window.esconderCriacao = function() {
  * - Se não existir: esconde o jogo e mostra o formulário de criação.
  */
 window.verificarPersonagemExistente = async function() {
-    console.log('🔍 [verificarPersonagemExistente] Iniciando verificação de personagem...');
     
     const client = getClient();
     if (!client) {
@@ -256,7 +244,6 @@ window.verificarPersonagemExistente = async function() {
         if (error) throw error;
 
         if (data) {
-            console.log('✅ [verificarPersonagemExistente] Personagem encontrado:', data.nome);
             window.personagemData = data;
             
             // REMOVER BLOQUEIOS DE CLIQUE: Garantir que telas de login, loading e criação estejam completamente escondidas
@@ -273,7 +260,6 @@ window.verificarPersonagemExistente = async function() {
                     el.style.pointerEvents = 'none';
                     el.style.zIndex = '-1';
                     el.classList.add('hidden');
-                    console.log(`🔒 [verificarPersonagemExistente] Elemento ${el.id || 'sem-id'} bloqueado e oculto`);
                 }
             });
             
@@ -326,14 +312,7 @@ window.verificarPersonagemExistente = async function() {
             } catch (e) {
                 console.error('[verificarPersonagemExistente] Erro ao carregar estado das provisões:', e);
             }
-            
-            console.log('🎮 [verificarPersonagemExistente] UI atualizada com dados do personagem:', {
-                nome: data.nome,
-                nivel: data.nivel || data.level || 1,
-                xp: xp
-            });
         } else {
-            console.log('💡 [verificarPersonagemExistente] Nenhum personagem encontrado. Mostrando tela de criação.');
             esconderElemento('dashboard-page');
             esconderElemento('app-container');
             mostrarElemento('characterCreationScreen');
@@ -345,13 +324,11 @@ window.verificarPersonagemExistente = async function() {
 
 // Mantém compatibilidade com o código existente que ainda chama verificarAutenticacao
 window.verificarAutenticacao = async function() {
-    console.log('[verificarAutenticacao] Delegando para verificarPersonagemExistente...');
     return window.verificarPersonagemExistente();
 };
 
 // Função global para fazer logout
 window.fazerLogout = async () => {
-    console.log("🚀 [fazerLogout] Iniciando logout...");
     
     // 1. Comando de saída no Supabase
     const { error } = await window.supabaseClient.auth.signOut();
@@ -382,7 +359,6 @@ window.fazerLogout = async () => {
         userLevelEl.innerText = '-';
     }
     
-    console.log("✅ [fazerLogout] Logout concluído com sucesso.");
 };
 
 // Função para atualizar a interface de status (Dashboard e ícones)
@@ -397,7 +373,6 @@ window.atualizarInterfaceStatus = function(data) {
     if (missionsContainer) {
         // Só limpa se for renderizado dinamicamente (verificar antes de usar)
         // missionsContainer.innerHTML = '';
-        console.log('[atualizarInterfaceStatus] Container de missões verificado.');
     }
 
     // 3. Limpeza do container de shop/inventário (se renderizado dinamicamente)
@@ -405,7 +380,6 @@ window.atualizarInterfaceStatus = function(data) {
     if (shopContainer) {
         // Só limpa se for renderizado dinamicamente (verificar antes de usar)
         // shopContainer.innerHTML = '';
-        console.log('[atualizarInterfaceStatus] Container de shop verificado.');
     }
 
     // 4. Limpeza do container de provisões (se renderizado dinamicamente)
@@ -413,12 +387,10 @@ window.atualizarInterfaceStatus = function(data) {
     if (containerProvisoes && containerProvisoes.parentElement?.querySelector('h3')?.textContent?.includes('Provisões')) {
         // Se o container de provisões for renderizado dinamicamente, limpar aqui
         // containerProvisoes.innerHTML = '';
-        console.log('[atualizarInterfaceStatus] Container de provisões verificado.');
     }
 
     // ... restante do código que cria os ícones e provisões ...
     // (Aqui você pode adicionar a lógica para criar os novos elementos baseado nos dados)
-    console.log('[atualizarInterfaceStatus] Interface de status limpa e pronta para atualização.');
 };
 
 // Função auxiliar para limpar containers antes de renderizar
@@ -1057,7 +1029,6 @@ window.focusTimerRunning = false;
 
 // Expandir timer de foco/limpeza
 window.expandFocusTimer = function() {
-    console.log('[expandFocusTimer] Expandindo timer de foco');
     const timerExpanded = document.getElementById('focusTimerExpanded');
     if (timerExpanded) {
         timerExpanded.classList.remove('hidden');
@@ -1074,7 +1045,6 @@ window.expandFocusTimer = function() {
 
 // Colapsar timer de foco/limpeza
 window.collapseFocusTimer = function() {
-    console.log('[collapseFocusTimer] Colapsando timer de foco');
     const timerExpanded = document.getElementById('focusTimerExpanded');
     if (timerExpanded) {
         timerExpanded.classList.add('hidden');
@@ -1091,7 +1061,6 @@ window.collapseFocusTimer = function() {
 
 // Iniciar/Retomar timer de foco
 window.startFocusTimer = function() {
-    console.log('[startFocusTimer] Iniciando/retomando timer de foco');
     window.focusTimerRunning = true;
     window.focusTimerPaused = false;
     
@@ -1129,7 +1098,6 @@ window.startFocusTimer = function() {
 
 // Pausar timer de foco
 window.pauseFocusTimer = function() {
-    console.log('[pauseFocusTimer] Pausando timer de foco');
     window.focusTimerPaused = true;
     
     // Atualiza botões
@@ -1146,7 +1114,6 @@ window.pauseFocusTimer = function() {
 
 // Finalizar timer de foco
 window.finishFocusTimer = async function() {
-    console.log('[finishFocusTimer] Finalizando timer de foco');
     window.focusTimerRunning = false;
     window.focusTimerPaused = false;
     
@@ -1217,7 +1184,6 @@ window.updateFocusTimerDisplay = function() {
 
 // Abrir timer de atividade física
 window.abrirTimerAtividadeFisica = function() {
-    console.log('[abrirTimerAtividadeFisica] Abrindo timer de atividade física');
     const timerDiv = document.getElementById('atividade-fisica-timer');
     const inicioDiv = document.getElementById('atividade-fisica-inicio');
     if (timerDiv && inicioDiv) {
@@ -1235,7 +1201,6 @@ window.abrirTimerAtividadeFisica = function() {
 
 // Iniciar atividade física
 window.iniciarAtividadeFisica = function() {
-    console.log('[iniciarAtividadeFisica] Iniciando atividade física');
     // Abre o timer no modal
     const timerModal = document.getElementById('atividade-fisica-timer-modal');
     const inicioModal = document.getElementById('atividade-fisica-inicio-modal');
@@ -1255,13 +1220,11 @@ window.iniciarAtividadeFisica = function() {
 
 // Pausar atividade física
 window.pausarAtividadeFisica = function() {
-    console.log('[pausarAtividadeFisica] Pausando atividade física');
     // TODO: Implementar lógica de pausa
 };
 
 // Finalizar atividade física
 window.finalizarAtividadeFisica = async function() {
-    console.log('[finalizarAtividadeFisica] Finalizando atividade física');
     
     const client = getClient();
     if (client) {
@@ -1304,25 +1267,21 @@ window.finalizarAtividadeFisica = async function() {
 
 // Abrir modal de missão
 window.openAddMissionModal = function() {
-    console.log('[openAddMissionModal] Abrindo modal de missão');
     // TODO: Implementar abertura do modal
 };
 
 // Alternar escudo de compromisso
 window.alternarEscudoCompromisso = function() {
-    console.log('[alternarEscudoCompromisso] Alternando escudo de compromisso');
     // TODO: Implementar lógica do escudo
 };
 
 // Ativar escudo de recuperação
 window.ativarEscudoRecuperacao = function() {
-    console.log('[ativarEscudoRecuperacao] Ativando escudo de recuperação');
     // TODO: Implementar lógica do escudo
 };
 
 // Ver agenda
 window.verAgenda = function() {
-    console.log('[verAgenda] Abrindo agenda');
     // TODO: Implementar visualização da agenda
 };
 
@@ -1500,7 +1459,6 @@ function carregarEstadoAgua() {
  */
 window.trocarAbaMissao = function(aba) {
     const timestamp = new Date().toISOString();
-    console.log(`🔄 [${timestamp}] [trocarAbaMissao] CLIQUE DETECTADO - Tentando trocar para aba: "${aba}"`);
     
     try {
         // Validação do parâmetro
@@ -1511,7 +1469,6 @@ window.trocarAbaMissao = function(aba) {
             return false;
         }
         
-        console.log(`✅ [trocarAbaMissao] Parâmetro válido: "${aba}"`);
         
         // Busca elementos
         const abaRotina = document.getElementById('aba-rotina');
@@ -1527,7 +1484,6 @@ window.trocarAbaMissao = function(aba) {
             conteudoJornada: !!conteudoJornada
         };
         
-        console.log(`🔍 [trocarAbaMissao] Elementos encontrados:`, elementosEncontrados);
         
         if (!abaRotina || !abaJornada || !conteudoRotina || !conteudoJornada) {
             console.error(`❌ [trocarAbaMissao] FALHA: Elementos das abas não encontrados`);
@@ -1537,7 +1493,6 @@ window.trocarAbaMissao = function(aba) {
             return false;
         }
         
-        console.log(`✅ [trocarAbaMissao] Todos os elementos encontrados`);
         
         // Estado antes da mudança
         const estadoAntes = {
@@ -1546,10 +1501,8 @@ window.trocarAbaMissao = function(aba) {
             rotinaAtiva: abaRotina.classList.contains('border-indigo-500'),
             jornadaAtiva: abaJornada.classList.contains('border-indigo-500')
         };
-        console.log(`📊 [trocarAbaMissao] Estado ANTES:`, estadoAntes);
         
         if (aba === 'rotina') {
-            console.log(`🔄 [trocarAbaMissao] Ativando aba ROTINA...`);
             
             // Ativa aba Rotina
             abaRotina.classList.add('border-indigo-500', 'text-indigo-400');
@@ -1566,10 +1519,8 @@ window.trocarAbaMissao = function(aba) {
                 rotinaAtiva: abaRotina.classList.contains('border-indigo-500'),
                 jornadaAtiva: abaJornada.classList.contains('border-indigo-500')
             };
-            console.log(`📊 [trocarAbaMissao] Estado DEPOIS:`, estadoDepois);
             
             if (estadoDepois.rotinaVisivel && !estadoDepois.jornadaVisivel && estadoDepois.rotinaAtiva) {
-                console.log(`✅ [trocarAbaMissao] Aba ROTINA ativada com sucesso!`);
             } else {
                 console.error(`❌ [trocarAbaMissao] FALHA: Aba ROTINA não foi ativada corretamente`);
                 console.error(`   Estado esperado: rotinaVisivel=true, jornadaVisivel=false, rotinaAtiva=true`);
@@ -1578,14 +1529,12 @@ window.trocarAbaMissao = function(aba) {
             
             // Carrega missões da rotina de forma assíncrona para não bloquear
             setTimeout(() => {
-                console.log(`📥 [trocarAbaMissao] Iniciando carregamento de missões da rotina...`);
                 carregarMissoesRotina().catch(err => {
                     console.error(`❌ [trocarAbaMissao] Erro ao carregar missões da rotina:`, err);
                 });
             }, 50);
             
         } else if (aba === 'jornada') {
-            console.log(`🔄 [trocarAbaMissao] Ativando aba JORNADA...`);
             
             // Ativa aba Jornada
             abaJornada.classList.add('border-indigo-500', 'text-indigo-400');
@@ -1602,10 +1551,8 @@ window.trocarAbaMissao = function(aba) {
                 rotinaAtiva: abaRotina.classList.contains('border-indigo-500'),
                 jornadaAtiva: abaJornada.classList.contains('border-indigo-500')
             };
-            console.log(`📊 [trocarAbaMissao] Estado DEPOIS:`, estadoDepois);
             
             if (estadoDepois.jornadaVisivel && !estadoDepois.rotinaVisivel && estadoDepois.jornadaAtiva) {
-                console.log(`✅ [trocarAbaMissao] Aba JORNADA ativada com sucesso!`);
             } else {
                 console.error(`❌ [trocarAbaMissao] FALHA: Aba JORNADA não foi ativada corretamente`);
                 console.error(`   Estado esperado: jornadaVisivel=true, rotinaVisivel=false, jornadaAtiva=true`);
@@ -1614,14 +1561,12 @@ window.trocarAbaMissao = function(aba) {
             
             // Carrega missões da jornada de forma assíncrona para não bloquear
             setTimeout(() => {
-                console.log(`📥 [trocarAbaMissao] Iniciando carregamento de missões da jornada...`);
                 carregarMissoesJornada().catch(err => {
                     console.error(`❌ [trocarAbaMissao] Erro ao carregar missões da jornada:`, err);
                 });
             }, 50);
         }
         
-        console.log(`✅ [trocarAbaMissao] Operação concluída para aba: "${aba}"`);
         return true;
         
     } catch (error) {
@@ -1636,7 +1581,6 @@ window.trocarAbaMissao = function(aba) {
  */
 async function carregarMissoesRotina() {
     const timestamp = new Date().toISOString();
-    console.log(`📥 [${timestamp}] [carregarMissoesRotina] INICIANDO carregamento de missões da rotina...`);
     
     try {
         const client = getClient();
@@ -1644,7 +1588,6 @@ async function carregarMissoesRotina() {
             console.error('❌ [carregarMissoesRotina] FALHA: Supabase não inicializado');
             return;
         }
-        console.log('✅ [carregarMissoesRotina] Supabase inicializado');
         
         const rotinaContainer = document.getElementById('rotinaContainer');
         const rotinaEmpty = document.getElementById('rotinaEmpty');
@@ -1653,11 +1596,9 @@ async function carregarMissoesRotina() {
             console.error('❌ [carregarMissoesRotina] FALHA: Container não encontrado');
             return;
         }
-        console.log('✅ [carregarMissoesRotina] Container encontrado');
         
         // Mostra loading
         rotinaContainer.innerHTML = '<div class="text-center py-4 text-gray-400 text-sm">Carregando...</div>';
-        console.log('⏳ [carregarMissoesRotina] Mostrando estado de carregamento...');
         
         const { data: { user }, error: erroAuth } = await client.auth.getUser();
         if (erroAuth || !user) {
@@ -1665,10 +1606,8 @@ async function carregarMissoesRotina() {
             rotinaContainer.innerHTML = '<div class="text-center py-4 text-red-400 text-sm">Erro ao carregar</div>';
             return;
         }
-        console.log('✅ [carregarMissoesRotina] Usuário autenticado:', user.id);
         
         // Busca atividades recorrentes
-        console.log('🔍 [carregarMissoesRotina] Buscando atividades recorrentes...');
         const { data: atividades, error } = await client
             .from('atividades')
             .select('id, nome_tarefa, pontuacao, categoria, complexidade, tipo_logica')
@@ -1682,13 +1621,11 @@ async function carregarMissoesRotina() {
             return;
         }
         
-        console.log(`📊 [carregarMissoesRotina] ${atividades?.length || 0} atividades encontradas`);
         
         // Limpa container
         rotinaContainer.innerHTML = '';
         
         if (!atividades || atividades.length === 0) {
-            console.log('ℹ️ [carregarMissoesRotina] Nenhuma atividade encontrada, mostrando estado vazio');
             if (rotinaEmpty) rotinaEmpty.classList.remove('hidden');
             return;
         }
@@ -1703,14 +1640,12 @@ async function carregarMissoesRotina() {
                 if (card) {
                     rotinaContainer.appendChild(card);
                     cardsCriados++;
-                    console.log(`✅ [carregarMissoesRotina] Card ${index + 1}/${atividades.length} criado: ${atividade.nome_tarefa}`);
                 }
             } catch (err) {
                 console.error(`❌ [carregarMissoesRotina] Erro ao criar card ${index + 1}:`, err, atividade);
             }
         });
         
-        console.log(`✅ [carregarMissoesRotina] CONCLUÍDO: ${cardsCriados} cards criados de ${atividades.length} atividades`);
     } catch (error) {
         console.error('❌ [carregarMissoesRotina] ERRO INESPERADO:', error);
         console.error('   Stack:', error.stack);
@@ -1726,7 +1661,6 @@ async function carregarMissoesRotina() {
  */
 async function carregarMissoesJornada() {
     const timestamp = new Date().toISOString();
-    console.log(`📥 [${timestamp}] [carregarMissoesJornada] INICIANDO carregamento de missões da jornada...`);
     
     try {
         const client = getClient();
@@ -1734,7 +1668,6 @@ async function carregarMissoesJornada() {
             console.error('❌ [carregarMissoesJornada] FALHA: Supabase não inicializado');
             return;
         }
-        console.log('✅ [carregarMissoesJornada] Supabase inicializado');
         
         const jornadaContainer = document.getElementById('jornadaContainer');
         const jornadaEmpty = document.getElementById('jornadaEmpty');
@@ -1743,11 +1676,9 @@ async function carregarMissoesJornada() {
             console.error('❌ [carregarMissoesJornada] FALHA: Container não encontrado');
             return;
         }
-        console.log('✅ [carregarMissoesJornada] Container encontrado');
         
         // Mostra loading
         jornadaContainer.innerHTML = '<div class="text-center py-4 text-gray-400 text-sm">Carregando...</div>';
-        console.log('⏳ [carregarMissoesJornada] Mostrando estado de carregamento...');
         
         const { data: { user }, error: erroAuth } = await client.auth.getUser();
         if (erroAuth || !user) {
@@ -1755,10 +1686,8 @@ async function carregarMissoesJornada() {
             jornadaContainer.innerHTML = '<div class="text-center py-4 text-red-400 text-sm">Erro ao carregar</div>';
             return;
         }
-        console.log('✅ [carregarMissoesJornada] Usuário autenticado:', user.id);
         
         // Busca atividades únicas
-        console.log('🔍 [carregarMissoesJornada] Buscando atividades únicas...');
         const { data: atividades, error } = await client
             .from('atividades')
             .select('id, nome_tarefa, pontuacao, categoria, complexidade, tipo_logica')
@@ -1772,13 +1701,11 @@ async function carregarMissoesJornada() {
             return;
         }
         
-        console.log(`📊 [carregarMissoesJornada] ${atividades?.length || 0} atividades encontradas`);
         
         // Limpa container
         jornadaContainer.innerHTML = '';
         
         if (!atividades || atividades.length === 0) {
-            console.log('ℹ️ [carregarMissoesJornada] Nenhuma atividade encontrada, mostrando estado vazio');
             if (jornadaEmpty) jornadaEmpty.classList.remove('hidden');
             return;
         }
@@ -1793,14 +1720,12 @@ async function carregarMissoesJornada() {
                 if (card) {
                     jornadaContainer.appendChild(card);
                     cardsCriados++;
-                    console.log(`✅ [carregarMissoesJornada] Card ${index + 1}/${atividades.length} criado: ${atividade.nome_tarefa}`);
                 }
             } catch (err) {
                 console.error(`❌ [carregarMissoesJornada] Erro ao criar card ${index + 1}:`, err, atividade);
             }
         });
         
-        console.log(`✅ [carregarMissoesJornada] CONCLUÍDO: ${cardsCriados} cards criados de ${atividades.length} atividades`);
     } catch (error) {
         console.error('❌ [carregarMissoesJornada] ERRO INESPERADO:', error);
         console.error('   Stack:', error.stack);
@@ -1815,91 +1740,7 @@ async function carregarMissoesJornada() {
  * Função temporária para criar missões de teste
  * Remove esta função após popular o banco de dados
  */
-window.criarMissoesTeste = async function() {
-    console.log('🧪 [criarMissoesTeste] Criando missões de teste...');
-    
-    const client = getClient();
-    if (!client) {
-        console.error('❌ [criarMissoesTeste] Supabase não inicializado');
-        alert('Erro: Supabase não inicializado');
-        return;
-    }
-    
-    try {
-        const { data: { user }, error: erroAuth } = await client.auth.getUser();
-        if (erroAuth || !user) {
-            console.error('❌ [criarMissoesTeste] Erro de autenticação:', erroAuth);
-            alert('Erro: Usuário não autenticado');
-            return;
-        }
-        
-        const missoesTeste = [
-            {
-                nome_tarefa: 'Beber Água',
-                tipo_logica: 'recorrente',
-                categoria: 'fisico',
-                pontuacao: 5,
-                complexidade: 1,
-                user_id: user.id
-            },
-            {
-                nome_tarefa: 'Arrumar a Cama',
-                tipo_logica: 'recorrente',
-                categoria: 'fisico',
-                pontuacao: 5,
-                complexidade: 1,
-                user_id: user.id
-            },
-            {
-                nome_tarefa: 'Meditar 5min',
-                tipo_logica: 'recorrente',
-                categoria: 'mental',
-                pontuacao: 5,
-                complexidade: 1,
-                user_id: user.id
-            }
-        ];
-        
-        // Verifica se já existem atividades de teste para evitar duplicatas
-        const { data: atividadesExistentes } = await client
-            .from('atividades')
-            .select('nome_tarefa')
-            .eq('user_id', user.id)
-            .in('nome_tarefa', missoesTeste.map(m => m.nome_tarefa));
-        
-        const nomesExistentes = atividadesExistentes?.map(a => a.nome_tarefa) || [];
-        const missoesParaInserir = missoesTeste.filter(m => !nomesExistentes.includes(m.nome_tarefa));
-        
-        if (missoesParaInserir.length === 0) {
-            console.log('ℹ️ [criarMissoesTeste] Todas as missões de teste já existem');
-            alert('Todas as missões de teste já foram criadas!');
-            return;
-        }
-        
-        const { data, error } = await client
-            .from('atividades')
-            .insert(missoesParaInserir)
-            .select();
-        
-        if (error) {
-            console.error('❌ [criarMissoesTeste] Erro ao inserir missões:', error);
-            alert('Erro ao criar missões de teste: ' + error.message);
-            return;
-        }
-        
-        console.log('✅ [criarMissoesTeste] Missões criadas com sucesso:', data);
-        alert(`${missoesParaInserir.length} missão(ões) de teste criada(s) com sucesso!`);
-        
-        // Recarrega as abas
-        if (typeof carregarMissoesRotina === 'function') {
-            await carregarMissoesRotina();
-        }
-        
-    } catch (error) {
-        console.error('❌ [criarMissoesTeste] Erro inesperado:', error);
-        alert('Erro ao criar missões de teste: ' + error.message);
-    }
-};
+// Função antiga de criação de missões de teste removida (não utilizada em produção)
 
 /**
  * Cria um card visual para uma atividade da Rotina (recorrente)
@@ -2146,7 +1987,6 @@ function handleClickJornada(event) {
                 const missionsPage = document.getElementById('missions-page');
                 if (missionsPage && !missionsPage.classList.contains('hidden') && !carregamentoInicial) {
                     carregamentoInicial = true;
-                    console.log('📄 [Observer] Página de missões foi aberta, inicializando...');
                     
                     // Inicializa event listeners
                     setTimeout(() => {
@@ -2160,14 +2000,11 @@ function handleClickJornada(event) {
                             const conteudoJornada = document.getElementById('conteudo-jornada');
                             
                             if (conteudoRotina && !conteudoRotina.classList.contains('hidden')) {
-                                console.log('📥 [Observer] Carregando missões da rotina...');
                                 carregarMissoesRotina().catch(err => console.error('Erro ao carregar rotina:', err));
                             } else if (conteudoJornada && !conteudoJornada.classList.contains('hidden')) {
-                                console.log('📥 [Observer] Carregando missões da jornada...');
                                 carregarMissoesJornada().catch(err => console.error('Erro ao carregar jornada:', err));
                             } else {
                                 // Por padrão, carrega rotina
-                                console.log('📥 [Observer] Carregando missões da rotina (padrão)...');
                                 carregarMissoesRotina().catch(err => console.error('Erro ao carregar rotina:', err));
                             }
                         } catch (err) {
@@ -2186,7 +2023,6 @@ function handleClickJornada(event) {
         const missionsPage = document.getElementById('missions-page');
         if (missionsPage) {
             observer.observe(missionsPage, { attributes: true, attributeFilter: ['class'] });
-            console.log('👁️ [Observer] Observando mudanças na página de missões');
         } else {
             console.warn('⚠️ [Observer] Página de missões não encontrada, tentando novamente...');
             setTimeout(iniciarObserver, 500);
@@ -2292,73 +2128,103 @@ window.diagnosticarBloqueioCliques = function() {
 window.navigationSystem = {
     currentPage: 'dashboard',
     
+    /**
+     * Navegação SPA LEGADA (dentro de uma única página)
+     * Em modo multi-páginas (index.html, missoes.html, perfil.html),
+     * simplesmente não faz nada se o alvo não existir no DOM.
+     */
     navigateTo: function(page) {
-        console.log(`🧭 [navigationSystem] Navegando para: ${page}`);
-        
-        // Lista de todas as páginas
         const pages = ['dashboard', 'missions', 'inventory', 'stats', 'profile'];
-        
-        // Esconde todas as páginas
+
+        // Verifica se a página alvo existe nesta página HTML
+        const targetPage = document.getElementById(`${page}-page`);
+        if (!targetPage) {
+            // No novo modelo multi-arquivos isso é esperado em várias páginas,
+            // então não logamos erro para não poluir o console.
+            return false;
+        }
+
+        // Esconde apenas as páginas que existirem no DOM atual
         pages.forEach(pageId => {
             const pageElement = document.getElementById(`${pageId}-page`);
             if (pageElement) {
                 pageElement.style.display = 'none';
                 pageElement.classList.add('hidden');
                 pageElement.style.pointerEvents = 'none';
-                console.log(`🔒 [navigationSystem] Página ${pageId} oculta`);
             }
         });
         
         // Mostra apenas a página solicitada
-        const targetPage = document.getElementById(`${page}-page`);
-        if (targetPage) {
-            targetPage.style.display = 'block';
-            targetPage.classList.remove('hidden');
-            targetPage.style.pointerEvents = 'auto';
-            this.currentPage = page;
-            console.log(`✅ [navigationSystem] Página ${page} ativada`);
-            
-            // Atualiza botões de navegação
-            document.querySelectorAll('.nav-bottom-btn').forEach(btn => {
-                const btnPage = btn.getAttribute('data-page');
-                if (btnPage === page) {
-                    btn.classList.add('text-white');
-                    btn.classList.remove('text-gray-400');
-                } else {
-                    btn.classList.remove('text-white');
-                    btn.classList.add('text-gray-400');
-                }
-            });
-            
-            return true;
-        } else {
-            console.error(`❌ [navigationSystem] Página ${page} não encontrada`);
-            return false;
-        }
+        targetPage.style.display = 'block';
+        targetPage.classList.remove('hidden');
+        targetPage.style.pointerEvents = 'auto';
+        this.currentPage = page;
+        
+        // Atualiza botões de navegação SPA legados (se ainda existirem com data-page)
+        document.querySelectorAll('.nav-bottom-btn').forEach(btn => {
+            const btnPage = btn.getAttribute('data-page');
+            if (!btnPage) return;
+            if (btnPage === page) {
+                btn.classList.add('text-white');
+                btn.classList.remove('text-gray-400');
+            } else {
+                btn.classList.remove('text-white');
+                btn.classList.add('text-gray-400');
+            }
+        });
+        
+        return true;
     },
     
     // Inicializa a navegação
     init: function() {
-        console.log('🚀 [navigationSystem] Inicializando sistema de navegação...');
-        
-        // Garante que apenas dashboard esteja visível inicialmente
-        this.navigateTo('dashboard');
-        
-        // Adiciona event listeners aos botões de navegação como fallback
+        // Descobre qual página existe neste HTML e usa como inicial
+        const candidatePages = ['dashboard', 'missions', 'inventory', 'stats', 'profile'];
+        let initial = null;
+        for (const p of candidatePages) {
+            if (document.getElementById(`${p}-page`)) {
+                initial = p;
+                break;
+            }
+        }
+
+        if (initial) {
+            this.navigateTo(initial);
+        }
+
+        // Adiciona event listeners aos botões de navegação apenas se tiver data-page
         document.querySelectorAll('.nav-bottom-btn').forEach(btn => {
             const page = btn.getAttribute('data-page');
             if (page) {
                 btn.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log(`🖱️ [navigationSystem] Botão ${page} clicado via event listener`);
                     this.navigateTo(page);
                 });
             }
         });
-        
-        console.log('✅ [navigationSystem] Sistema de navegação inicializado');
     }
+};
+
+// Helpers de renderização explícita por aba (API simples baseada em funções)
+window.renderDashboard = function() {
+    return window.navigationSystem?.navigateTo('dashboard');
+};
+
+window.renderMissions = function() {
+    return window.navigationSystem?.navigateTo('missions');
+};
+
+window.renderInventory = function() {
+    return window.navigationSystem?.navigateTo('inventory');
+};
+
+window.renderStats = function() {
+    return window.navigationSystem?.navigateTo('stats');
+};
+
+window.renderProfile = function() {
+    return window.navigationSystem?.navigateTo('profile');
 };
 
 // ============================================

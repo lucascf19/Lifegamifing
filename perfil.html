@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR" style="font-size: 18px;">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  >
+  <title>App Gamificação - Perfil</title>
+
+  <!-- Chart.js (para gráficos de stats, se necessários) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Google Fonts - Medieval -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Press+Start+2P&display=swap"
+    rel="stylesheet"
+  >
+
+  <!-- FontAwesome Icons -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  >
+
+  <!-- CSS global -->
+  <link rel="stylesheet" href="/style.css">
+
+  <!-- Lógica core do RPG -->
+  <script src="/script.js" defer></script>
+</head>
+<body class="bg-black">
+  <!-- Camada de Aura do Escudo (sobreposta) -->
+  <div id="aura-escudo" class="pointer-events-none fixed inset-0 z-[9999] transition-opacity duration-500 opacity-0"></div>
+
+  <div id="root"></div>
+  <div id="app">
+    <div id="app-container" class="bg-black" style="display: block !important; min-height: 100vh; position: relative;">
+      <!-- Header RPG (copiado do index.html de forma resumida) -->
+      <div id="header-rpg" class="sticky top-0 z-[100] bg-black/90 backdrop-blur-md border-b border-gray-900/50">
+        <!-- Aqui você pode colar o mesmo header completo do index.html
+             (avatar, nome, XP, cristais, energia, etc.) -->
+      </div>
+
+      <main id="main-content" class="relative w-full">
+        <div id="profile-page" class="page px-3 py-3 space-y-3 pt-4">
+          <!-- Seletor de Tema -->
+          <div class="bg-[#121212] border border-gray-800 rounded-2xl p-3 rpg-card">
+            <h3 class="text-base font-bold mb-3 text-medieval">Estilo Visual</h3>
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="font-semibold text-sm">Modo Minimalista (AMOLED)</div>
+                <div class="text-xs text-gray-400">Interface limpa e escura</div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="temaRpgToggle" class="sr-only peer"
+                  onchange="if(window.alternarTemaRPG) window.alternarTemaRPG();">
+                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 
+                        peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
+                        after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 
+                        after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+            <div class="mt-2 text-xs text-gray-500">
+              <span id="temaAtualTexto">Modo Minimalista ativo</span>
+            </div>
+          </div>
+
+          <!-- Card de Perfil / Pontos -->
+          <div class="bg-[#121212] border border-gray-800 rounded-2xl p-3 rpg-card">
+            <h2 class="text-base font-bold mb-3 text-medieval">Perfil</h2>
+            <div id="pointsDisplay" class="text-center py-8">
+              <div class="text-4xl font-bold mb-2">0</div>
+              <div class="text-gray-400">Pontos Totais</div>
+            </div>
+          </div>
+
+          <!-- Dados Corporais -->
+          <div class="bg-[#121212] border border-gray-800 rounded-2xl p-3 rpg-card">
+            <h3 class="text-base font-bold mb-3 text-medieval">Dados Corporais</h3>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <div class="text-sm text-gray-400 mb-1">Altura</div>
+                <div id="profileAltura" class="text-2xl font-bold">-</div>
+              </div>
+              <div>
+                <div class="text-sm text-gray-400 mb-1">Peso</div>
+                <div id="profilePeso" class="text-2xl font-bold">-</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quest Semanal de Biometria -->
+          <div id="quest-biometria-semanal" class="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 border-2 border-indigo-500 rounded-2xl p-4 hidden rpg-card">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="text-3xl">📏</span>
+              <div class="flex-1">
+                <h3 class="text-lg font-bold">Quest Semanal de Biometria</h3>
+                <p class="text-sm text-gray-400">Registre suas medidas corporais</p>
+              </div>
+            </div>
+            <p class="text-sm text-gray-300 mb-4">
+              É hora de registrar seu Peso, Gordura e Massa Magra para acompanhar sua evolução!
+            </p>
+            <button
+              onclick="setTimeout(() => { document.getElementById('biometriaPeso')?.focus(); }, 100);"
+              class="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors"
+            >
+              Registrar Agora
+            </button>
+          </div>
+
+          <!-- Botão Registrar Medida Avulsa -->
+          <button
+            onclick="window.registrarMedidaAvulsa && window.registrarMedidaAvulsa()"
+            class="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors"
+          >
+            Registrar Medida Avulsa
+          </button>
+
+          <!-- Botão Configurações de Notificação -->
+          <button
+            onclick="window.abrirConfigsNotificacao && window.abrirConfigsNotificacao()"
+            class="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+          >
+            Configurar Horários de Refeições
+          </button>
+
+          <!-- Painel de Biometria -->
+          <div class="bg-[#121212] border border-gray-800 rounded-2xl p-3 rpg-card">
+            <h3 class="text-base font-bold mb-3 text-medieval">Painel de Biometria</h3>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Peso (kg)</label>
+                <input
+                  type="number"
+                  id="biometriaPeso"
+                  min="30"
+                  max="300"
+                  step="0.1"
+                  class="w-full px-4 py-2 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Percentual de Gordura (%)</label>
+                <input
+                  type="number"
+                  id="biometriaGordura"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  class="w-full px-4 py-2 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Massa Magra (kg)</label>
+                <input
+                  type="number"
+                  id="biometriaMassaMagra"
+                  min="0"
+                  max="300"
+                  step="0.1"
+                  class="w-full px-4 py-2 bg-[#1a1a1a] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Atributos (Força, Inteligência, etc.) -->
+          <div class="bg-[#121212] border border-gray-800 rounded-2xl p-3 rpg-card">
+            <h3 class="text-base font-bold mb-3 text-medieval">Atributos do Personagem</h3>
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <div class="text-xs text-gray-400 mb-1">Força</div>
+                <div id="attr-forca" class="text-lg font-bold text-white">10</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-400 mb-1">Inteligência</div>
+                <div id="attr-inteligencia" class="text-lg font-bold text-white">10</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-400 mb-1">Vitalidade</div>
+                <div id="attr-vitalidade" class="text-lg font-bold text-white">10</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Bottom Navigation compartilhada -->
+      <nav class="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-900 bottom-nav" 
+      style="z-index: 999999; pointer-events: auto !important;">
+        <div class="flex items-center justify-around h-16">
+          <a href="index.html" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
+            <span class="text-2xl">🏰</span>
+            <span class="text-xs font-medium">Dashboard</span>
+          </a>
+          <a href="missoes.html" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
+            <span class="text-2xl">⚔️</span>
+            <span class="text-xs font-medium">Missões</span>
+          </a>
+          <a href="index.html#inventory-page" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
+            <span class="text-2xl">🎒</span>
+            <span class="text-xs font-medium">Inventário</span>
+          </a>
+          <a href="index.html#stats-page" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
+            <span class="text-2xl">📊</span>
+            <span class="text-xs font-medium">Estatísticas</span>
+          </a>
+          <a href="perfil.html" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-white transition-colors" style="min-width: 28px; min-height: 28px;">
+            <span class="text-2xl">👤</span>
+            <span class="text-xs font-medium">Perfil</span>
+          </a>
+        </div>
+      </nav>
+    </div>
+  </div>
+</body>
+</html>
+

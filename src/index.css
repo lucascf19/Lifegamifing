@@ -1,6 +1,35 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+
+/* CSS emergencial para garantir legibilidade básica */
+body { 
+    color: white !important; 
+    font-family: sans-serif; 
+}
+
+.hidden { 
+    display: none !important; 
+}
+
+#app-container { 
+    background: #000; 
+    min-height: 100vh; 
+}
+
+/* Botões padrão com estilo de item de inventário RPG */
+button { 
+    cursor: pointer; 
+    padding: 10px; 
+    background: #2d1b12; 
+    border: 1px solid #5d4037; 
+    color: #d7ccc8; 
+    border-radius: 8px; 
+    font-family: 'Press Start 2P', cursive;
+    font-size: 10px;
+    transition: transform 0.1s ease, background-color 0.15s ease;
+}
+
+button:active {
+    transform: scale(0.95);
+}
 
 :root {
     --amoled-black: #000000;
@@ -25,15 +54,13 @@
     -webkit-tap-highlight-color: transparent; /* Remove o brilho de clique no Android */
 }
 
+/* 1. Reset de Layout - Sem Flexbox no topo */
 html, body {
-    /* Em vez de travar altura em 100%, deixamos auto e usamos min-height quando necessário */
-    height: auto;
-    min-height: 100vh;
     margin: 0;
-    overflow-y: auto; /* Permite scroll suave */
-    -webkit-overflow-scrolling: touch; /* Scroll suave no iOS */
-    box-sizing: border-box; /* Garante que padding não estoure */
+    padding: 0;
+    height: 100%; /* Mantém a base sólida */
     background-color: #000;
+    overflow-x: hidden;
 }
 
 /* RESET TEMPORÁRIO AGRESSIVO PARA INVESTIGAR ESPAÇAMENTO VERTICAL */
@@ -47,8 +74,78 @@ body {
     background-color: var(--amoled-black);
     color: #ffffff;
     font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
     /* Permite que sombras internas sejam visíveis */
     position: relative;
+}
+
+/* Títulos em estilo RPG */
+h1, h2, h3,
+.titulo-rpg,
+.text-medieval {
+    font-family: 'MedievalSharp', cursive;
+    letter-spacing: 0.08em;
+}
+
+/* Cards estruturais do app (missões, status, etc.) em estilo pergaminho/placa RPG */
+.rpg-card,
+.card-rpg {
+    background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+    border: 2px solid #3d2b1f;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    padding: 16px;
+}
+
+.rpg-card::before,
+.card-rpg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 10px;
+    height: 10px;
+    border-top: 2px solid #b8860b;
+    border-left: 2px solid #b8860b;
+}
+
+/* Botões principais padrão */
+.btn-primary {
+    background-color: #4f46e5;
+    color: #ffffff;
+    padding: 12px 20px;
+    border-radius: 9999px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn-primary:hover {
+    background-color: #4338ca;
+}
+
+.btn-primary:active {
+    transform: scale(0.97);
+}
+
+/* Cores fixas para status */
+.status-energy {
+    color: #facc15; /* Amarelo para ⚡ */
+}
+
+.status-crystals {
+    color: #60a5fa; /* Azul para 💎 */
+}
+
+/* Barra de XP com brilho RPG */
+#xpBar {
+    height: 12px !important;
+    border-radius: 10px;
+    box-shadow: 0 0 10px #4f46e5;
 }
 
 /* --- O BOTÃO FLUTUANTE (+) --- */
@@ -249,22 +346,12 @@ body.brilho-saude::before {
     animation: metabolismoAtivo 2s ease-in-out infinite;
 }
 
-/* --- SAFE AREAS / CONTAINER PRINCIPAL --- */
+/* 2. O Container agora é um bloco simples */
 #app-container {
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    /* Em vez de height fixo, usamos min-height para evitar esticar demais o conteúdo */
-    min-height: 100dvh;
-    height: auto;
+    display: block !important; /* Mata o Flexbox centralizador */
     width: 100%;
-    box-sizing: border-box !important; /* Garante que padding não estoure a altura */
-    /* REMOVIDO overflow: hidden para não bloquear cliques */
-    overflow-x: hidden; /* Apenas horizontal */
-    overflow-y: visible; /* Permite scroll vertical sem bloquear */
-    pointer-events: auto;
-    justify-content: flex-start !important; /* Conteúdo sempre colado no topo */
-    align-items: flex-start !important; /* Páginas coladas no topo, não centralizadas */
+    min-height: 100%;
+    position: relative;
 }
 
 /* Garantir que bottom-nav não seja afetada por overflow do container pai */
@@ -333,35 +420,38 @@ nav[class*="fixed"][class*="bottom-0"] * {
     background-color: rgba(99, 102, 241, 0.1) !important; /* Fundo sutil quando ativo */
 }
 
-/* Header RPG - respeita a barra de status */
+/* 3. O Header fica fixo sem empurrar ninguém */
 #header-rpg {
-    /* Não adiciona padding-top aqui, pois o app-container já está posicionado abaixo da safe area */
-    padding-top: 0;
-    /* Garante que o header fique no topo quando sticky */
-    top: 0;
     position: sticky;
+    top: 0;
     z-index: 100;
-    height: auto; /* Altura automática baseada no conteúdo */
-    min-height: 0; /* Remove altura mínima que pode causar espaços */
-    flex-shrink: 0; /* Não encolhe */
+    width: 100%;
 }
 
-/* Conteúdo Principal */
+/* 4. O Main encosta no Header */
 main {
-    flex: 1;
+    display: block !important;
+    width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    /* Removidos height/min-height fixos para evitar esticar o layout */
+}
+
+/* Reset fino para garantir que nada empurre o conteúdo para baixo */
+#main-content {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start !important; /* FORÇA alinhamento no topo */
-    align-items: flex-start !important; /* Cola conteúdo no topo */
-    align-content: flex-start !important; /* FORÇA conteúdo no topo */
-    /* Padding de segurança: altura da barra (64px) + pequeno respiro + safe-area */
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
-    overflow-y: auto !important; /* Permite scroll para ver conteúdo escondido */
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    margin: 0 !important; /* Remove margens automáticas */
-    margin-top: 0 !important; /* Remove margem superior */
-    box-sizing: border-box !important; /* Garante que padding não estoure a altura */
+}
+
+.page {
+    margin-top: 0 !important;
+    padding-top: 5px !important; /* Apenas um respiro mínimo */
+}
+
+.rpg-card:first-child {
+    margin-top: 0 !important;
 }
 
 /* Páginas dentro do main - RESET AGRESSIVO DE LAYOUT */
