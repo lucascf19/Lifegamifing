@@ -8,6 +8,14 @@
     --neon-yellow: #fbbf24;
     --neon-purple: #8b5cf6;
     --neon-blue: #3b82f6;
+    /* Configuração de Safe Areas */
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    /* Variáveis completas para compatibilidade */
+    --safe-area-inset-top: env(safe-area-inset-top, 0px);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-inset-left: env(safe-area-inset-left, 0px);
+    --safe-area-inset-right: env(safe-area-inset-right, 0px);
 }
 
 * {
@@ -17,42 +25,64 @@
     -webkit-tap-highlight-color: transparent; /* Remove o brilho de clique no Android */
 }
 
+html, body {
+    /* Em vez de travar altura em 100%, deixamos auto e usamos min-height quando necessário */
+    height: auto;
+    min-height: 100vh;
+    margin: 0;
+    overflow-y: auto; /* Permite scroll suave */
+    -webkit-overflow-scrolling: touch; /* Scroll suave no iOS */
+    box-sizing: border-box; /* Garante que padding não estoure */
+    background-color: #000;
+}
+
+/* RESET TEMPORÁRIO AGRESSIVO PARA INVESTIGAR ESPAÇAMENTO VERTICAL */
+div, section, main {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    align-self: flex-start !important;
+}
+
 body {
     background-color: var(--amoled-black);
     color: #ffffff;
     font-family: 'Inter', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
     /* Permite que sombras internas sejam visíveis */
     position: relative;
 }
 
 /* --- O BOTÃO FLUTUANTE (+) --- */
-.fab-container {
+.fab-container,
+.fab-button,
+#btn-adicionar {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 9999;
+    /* Calcula a posição: Safe Area + altura da barra de navegação (60px) + margem (20px) */
+    bottom: calc(var(--sab, 20px) + 80px);
+    right: 20px;
+    z-index: 10000; /* Z-index maior que a bottom-nav (9999) para ficar acima */
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 12px;
+    width: auto;
+    pointer-events: none; /* Container não bloqueia cliques */
 }
 
 .fab-main {
-    width: 64px;
-    height: 64px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     background-color: #3b82f6; /* Azul Neon */
     color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 32px;
+    font-size: 28px;
     box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
     border: none;
     cursor: pointer;
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: auto; /* Botão recebe cliques */
 }
 
 .fab-main:active {
@@ -217,4 +247,261 @@ body.brilho-saude::before {
     background: linear-gradient(45deg, rgba(16, 185, 129, 0.3), rgba(34, 197, 94, 0.3));
     z-index: -1;
     animation: metabolismoAtivo 2s ease-in-out infinite;
+}
+
+/* --- SAFE AREAS / CONTAINER PRINCIPAL --- */
+#app-container {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    /* Em vez de height fixo, usamos min-height para evitar esticar demais o conteúdo */
+    min-height: 100dvh;
+    height: auto;
+    width: 100%;
+    box-sizing: border-box !important; /* Garante que padding não estoure a altura */
+    /* REMOVIDO overflow: hidden para não bloquear cliques */
+    overflow-x: hidden; /* Apenas horizontal */
+    overflow-y: visible; /* Permite scroll vertical sem bloquear */
+    pointer-events: auto;
+    justify-content: flex-start !important; /* Conteúdo sempre colado no topo */
+    align-items: flex-start !important; /* Páginas coladas no topo, não centralizadas */
+}
+
+/* Garantir que bottom-nav não seja afetada por overflow do container pai */
+#app-container > nav.bottom-nav,
+#app-container > nav[class*="bottom-0"] {
+    position: fixed !important;
+    z-index: 999999 !important;
+    pointer-events: auto !important;
+}
+
+/* Barra de navegação inferior - PRIORIDADE MÁXIMA */
+.bottom-nav,
+nav[class*="fixed"][class*="bottom-0"] {
+    pointer-events: auto !important;
+    z-index: 999999 !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    background: #000000 !important;
+    display: flex !important;
+    justify-content: space-around !important;
+    align-items: center !important;
+    border-top: 1px solid #333 !important;
+}
+
+/* Garantir que filhos da bottom-nav também recebam cliques */
+.bottom-nav *,
+nav[class*="fixed"][class*="bottom-0"] * {
+    pointer-events: auto !important;
+}
+
+/* Estilização dos botões de navegação */
+.nav-bottom-btn {
+    gap: 6px !important; /* Espaçamento entre ícone e label (gap-1.5 = 6px) */
+    padding: 8px 12px !important; /* Padding interno para área de clique maior */
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+}
+
+.nav-bottom-btn:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.nav-bottom-btn span:first-child {
+    /* Ícone */
+    line-height: 1 !important;
+}
+
+.nav-bottom-btn span:last-child {
+    /* Label */
+    color: #e5e7eb !important; /* text-gray-200 - mais legível */
+    font-weight: 500 !important;
+    letter-spacing: 0.025em !important;
+}
+
+.nav-bottom-btn:hover span:last-child,
+.nav-bottom-btn.text-white span:last-child {
+    color: #ffffff !important; /* Branco quando ativo ou hover */
+}
+
+/* Estado ativo da página */
+.nav-bottom-btn.text-white {
+    background-color: rgba(99, 102, 241, 0.1) !important; /* Fundo sutil quando ativo */
+}
+
+/* Header RPG - respeita a barra de status */
+#header-rpg {
+    /* Não adiciona padding-top aqui, pois o app-container já está posicionado abaixo da safe area */
+    padding-top: 0;
+    /* Garante que o header fique no topo quando sticky */
+    top: 0;
+    position: sticky;
+    z-index: 100;
+    height: auto; /* Altura automática baseada no conteúdo */
+    min-height: 0; /* Remove altura mínima que pode causar espaços */
+    flex-shrink: 0; /* Não encolhe */
+}
+
+/* Conteúdo Principal */
+main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start !important; /* FORÇA alinhamento no topo */
+    align-items: flex-start !important; /* Cola conteúdo no topo */
+    align-content: flex-start !important; /* FORÇA conteúdo no topo */
+    /* Padding de segurança: altura da barra (64px) + pequeno respiro + safe-area */
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow-y: auto !important; /* Permite scroll para ver conteúdo escondido */
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 !important; /* Remove margens automáticas */
+    margin-top: 0 !important; /* Remove margem superior */
+    box-sizing: border-box !important; /* Garante que padding não estoure a altura */
+}
+
+/* Páginas dentro do main - RESET AGRESSIVO DE LAYOUT */
+.page,
+[id$="-page"] {
+    /* Teste estrutural: empilhar conteúdo naturalmente em bloco */
+    display: block !important;
+    width: 100% !important;
+    /* Zera qualquer tentativa de centralização ou espaçamento vertical */
+    margin: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Container de missões - FORÇA alinhamento no topo */
+#missions-page {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+    justify-content: flex-start !important; /* FORÇA conteúdo no topo */
+    align-content: flex-start !important; /* FORÇA alinhamento no topo */
+    align-self: flex-start !important; /* Cola no topo */
+}
+
+#missions-page > div {
+    padding-top: 8px !important; /* Reduzido de pt-2 (8px) para um valor menor */
+    padding-bottom: 8px !important;
+    align-self: flex-start !important; /* Cola no topo */
+    width: 100%;
+}
+
+/* Containers de conteúdo das abas - colados no topo */
+#conteudo-rotina,
+#conteudo-jornada {
+    align-self: flex-start !important;
+    width: 100%;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    /* Pequeno respiro interno; o padding grande fica no main */
+    padding-bottom: 8px !important;
+    box-sizing: border-box !important;
+}
+
+/* Containers de lista de missões */
+#rotinaContainer,
+#jornadaContainer {
+    align-self: flex-start !important;
+    width: 100%;
+    /* Respiro mínimo; o espaço de segurança contra a bottom-nav já está no main */
+    padding-bottom: 8px !important;
+    box-sizing: border-box !important;
+}
+
+/* Interatividade: Garante que elementos escondidos não bloqueiem cliques */
+.hidden,
+[style*="display: none"],
+[style*="display:none"] {
+    pointer-events: none !important;
+}
+
+/* Garante que containers invisíveis não bloqueiem interações */
+.overlay,
+.backdrop,
+[class*="overlay"],
+[class*="backdrop"] {
+    pointer-events: none;
+}
+
+.overlay.active,
+.backdrop.active,
+[class*="overlay"].active,
+[class*="backdrop"].active {
+    pointer-events: auto;
+}
+
+/* ============================================
+   CORREÇÃO: Elementos ocultos não devem bloquear cliques
+   ============================================ */
+
+/* Garantir que elementos hidden não bloqueiem cliques */
+.hidden,
+[style*="display: none"],
+[style*="display:none"],
+[id*="loading"],
+[id*="Loading"],
+[class*="loading"],
+[class*="Loading"] {
+    pointer-events: none !important;
+    visibility: hidden !important;
+}
+
+/* Especificamente para divs de loading - garantir que não bloqueiem cliques */
+#dashboardLoading,
+[id*="loading"],
+[id*="Loading"] {
+    display: none !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    z-index: -1 !important;
+}
+
+/* Login screen - quando oculto, não deve bloquear */
+#loginScreen.hidden,
+#loginScreen[style*="display: none"],
+#loginScreen[style*="display:none"] {
+    pointer-events: none !important;
+    z-index: -1 !important;
+}
+
+/* Character creation screen - quando oculto, não deve bloquear */
+#characterCreationScreen.hidden,
+#characterCreationScreen[style*="display: none"],
+#characterCreationScreen[style*="display:none"] {
+    pointer-events: none !important;
+    z-index: -1 !important;
+}
+
+/* Aura escudo - quando opacity 0, garantir que não bloqueie */
+#aura-escudo[style*="opacity: 0"],
+#aura-escudo.opacity-0 {
+    pointer-events: none !important;
+}
+
+/* Garantir que elementos com opacity 0 não bloqueiem */
+[style*="opacity: 0"],
+[style*="opacity:0"],
+.opacity-0 {
+    pointer-events: none !important;
+}
+
+/* Garantir que a barra de navegação sempre receba cliques */
+.bottom-nav,
+nav[class*="fixed"][class*="bottom-0"] {
+    pointer-events: auto !important;
+}
+
+.bottom-nav *,
+nav[class*="fixed"][class*="bottom-0"] * {
+    pointer-events: auto !important;
 }

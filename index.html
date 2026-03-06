@@ -2,7 +2,7 @@
 <html lang="pt-BR" style="font-size: 18px;">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>App Gamificação</title>
     
     <!-- Chart.js -->
@@ -12,6 +12,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Press+Start+2P&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <!-- Lógica core do RPG - carregada cedo mas executada após o parse (defer) -->
+    <script src="/script.js" defer></script>
     
     <style>
         @keyframes pulse-red {
@@ -24,10 +30,11 @@
         .btn-min-height {
             min-height: 48px;
         }
+        
         /* Container de Criação de Personagem - CSS DE EMERGÊNCIA (sem animações, sem transições) */
         .container-criacao {
             background-color: #121212 !important;
-            height: 100vh !important;
+            height: 100dvh !important;
             width: 100vw !important;
             position: fixed !important;
             top: 0 !important;
@@ -36,12 +43,34 @@
             display: flex !important;
             flex-direction: column !important;
             justify-content: flex-start !important;
-            margin-top: 100px !important;
             align-items: center !important;
             gap: 20px !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            padding-top: 100px !important;
+            padding-bottom: 40px !important;
+            -webkit-overflow-scrolling: touch !important; /* Scroll suave no iOS */
             /* DESATIVAR TODAS AS ANIMAÇÕES */
             animation: none !important;
             transition: none !important;
+        }
+        
+        /* Estilização da barra de scroll para o container de criação */
+        .container-criacao::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .container-criacao::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        
+        .container-criacao::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
+            border-radius: 4px;
+        }
+        
+        .container-criacao::-webkit-scrollbar-thumb:hover {
+            background: #6a6a6a;
         }
         /* Campo de nome - INPUT SIMPLES (sem animações) */
         #characterName {
@@ -65,15 +94,33 @@
             transition-delay: 0s !important;
         }
         /* DESATIVAR KEYFRAMES */
-        @keyframes pulse-red,
-        @keyframes pulse-aura-verde,
-        @keyframes pulse-aura-laranja,
-        @keyframes pulse-aura-amarelo,
-        @keyframes pulse-aura-medicamento,
-        @keyframes pulse-aura-branca,
-        @keyframes pulse-brilho,
-        @keyframes borbulhar,
-        @keyframes bolhas,
+        @keyframes pulse-red {
+            /* DESATIVADAS PARA ESTABILIZAR FRAME RATE */
+        }
+        @keyframes pulse-aura-verde {
+            /* DESATIVADAS PARA ESTABILIZAR FRAME RATE */
+        }
+        @keyframes pulse-aura-laranja {
+            /* DESATIVADAS PARA ESTABILIZAR FRAME RATE */
+        }
+        @keyframes pulse-aura-amarelo {
+            /* DESATIVADAS PARA ESTABILIZAR FRAME RATE */
+        }
+        @keyframes pulse-aura-medicamento {
+            /* DESATIVADAS PARA ESTABILIZAR FRAME RATE */
+        }
+        @keyframes pulse-aura-branca {
+            /* DESATIVADAS PARA ESTABILIZAR FRAME RATE */
+        }
+        @keyframes pulse-brilho {
+            /* DESATIVADAS PARA ESTABILIZAR FRAME RATE */
+        }
+        @keyframes borbulhar {
+            /* DESATIVADAS PARA ESTABILIZAR FRAME RATE */
+        }
+        @keyframes bolhas {
+            /* DESATIVADAS PARA ESTABILIZAR FRAME RATE */
+        }
         @keyframes pulse-vermelho {
             /* DESATIVADAS PARA ESTABILIZAR FRAME RATE */
         }
@@ -327,9 +374,8 @@
         }
         
         /* Cards estilo pedra escura com bordas chanfradas */
-        .tema-rpg .bg-\\[\\#121212\\], 
-        .tema-rpg .bg-\\[\\#1a1a1a\\],
-        .tema-rpg [class*="bg-\\[\\#"] {
+        .tema-rpg [class*="bg-[#121212]"],
+        .tema-rpg [class*="bg-[#1a1a1a]"] {
             background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%) !important;
             border: 3px solid #3a3a3a !important;
             border-style: inset !important;
@@ -341,8 +387,8 @@
             position: relative;
         }
         
-        .tema-rpg .bg-\\[\\#121212\\]::before,
-        .tema-rpg .bg-\\[\\#1a1a1a\\]::before {
+        .tema-rpg [class*="bg-[#121212]"]::before,
+        .tema-rpg [class*="bg-[#1a1a1a]"]::before {
             content: '';
             position: absolute;
             top: 0;
@@ -532,6 +578,30 @@
             border-color: #f97316 !important;
             color: #f97316;
         }
+        
+        /* Estilos para Cards de Classe */
+        .classe-card {
+            cursor: pointer;
+            transform: scale(1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .classe-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .classe-card.ring-4 {
+            transform: scale(1.03);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        /* Grid responsivo para cards de classe */
+        @media (max-width: 640px) {
+            .grid.grid-cols-2 {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body class="bg-black text-white">
@@ -596,90 +666,181 @@
         </div>
         
         <!-- Tela de Criação de Personagem - CSS DE EMERGÊNCIA -->
-        <div id="characterCreationScreen" class="container-criacao hidden" style="background-color: #121212; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; z-index: 9999; display: flex; flex-direction: column; justify-content: flex-start; margin-top: 100px; gap: 20px; align-items: center; animation: none; transition: none;">
+        <div id="characterCreationScreen" class="container-criacao hidden" style="background-color: #121212; height: 100dvh; width: 100vw; position: fixed; top: 0; left: 0; z-index: 9999; display: none; flex-direction: column; justify-content: flex-start; padding-top: 100px; padding-bottom: 40px; gap: 20px; align-items: center; overflow-y: auto; overflow-x: hidden; animation: none; transition: none; pointer-events: none;">
+            <!-- Botão temporário de logout (debug) -->
+            <button 
+                onclick="if(typeof window.debugSignOut === 'function') { window.debugSignOut(); } else { console.error('debugSignOut não está disponível'); }" 
+                style="position: absolute; top: 20px; right: 10px; padding: 8px 10px; font-size: 12px; border-radius: 9999px; background-color: #dc2626; color: white; border: none; z-index: 10000; cursor: pointer;"
+            >
+                Sair (debug)
+            </button>
             <!-- Input de Nome - SIMPLES -->
             <div style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center; display: flex; flex-direction: column; justify-content: flex-start; background-color: #121212;">
-                <label for="characterName" class="block text-sm font-medium text-gray-300 mb-2">Nome do Avatar</label>
+                <label for="char-name" class="block text-sm font-medium text-gray-300 mb-2">Nome do Avatar</label>
                 <input 
                     type="text" 
-                    id="characterName" 
+                    id="char-name" 
                     placeholder="Ex: Aventureiro"
                     maxlength="30"
                     autofocus
                     autocomplete="off"
+                    onkeyup="if(event.key === 'Enter') window.criarPersonagem()"
                     class="w-full mt-40 px-4 py-3"
                     style="border: 2px solid white; padding: 15px; color: white; background: black; width: 80%; font-size: 18px; animation: none; transition: none;"
                 />
             </div>
             
-            <!-- Container de Classes - Abaixo do input -->
-            <div class="w-full max-w-md mx-auto px-4" style="width: 100%; max-width: 400px; margin-top: 30px;">
-                <div class="text-center mb-4">
+            <!-- Campos de Peso e Altura -->
+            <div style="width: 100%; max-width: 400px; margin: 0 auto; text-align: center; display: flex; flex-direction: row; gap: 15px; justify-content: center; background-color: #121212; margin-top: 20px;">
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <label for="input-altura" class="block text-sm font-medium text-gray-300 mb-2">Altura (cm)</label>
+                    <input 
+                        type="number" 
+                        id="input-altura" 
+                        placeholder="Ex: 175"
+                        min="100"
+                        max="250"
+                        step="1"
+                        autocomplete="off"
+                        class="w-full px-4 py-3"
+                        style="border: 2px solid white; padding: 15px; color: white; background: black; font-size: 18px; animation: none; transition: none;"
+                    />
+                </div>
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <label for="input-peso" class="block text-sm font-medium text-gray-300 mb-2">Peso (kg)</label>
+                    <input 
+                        type="number" 
+                        id="input-peso" 
+                        placeholder="Ex: 70"
+                        min="30"
+                        max="300"
+                        step="0.1"
+                        autocomplete="off"
+                        class="w-full px-4 py-3"
+                        style="border: 2px solid white; padding: 15px; color: white; background: black; font-size: 18px; animation: none; transition: none;"
+                    />
+                </div>
+            </div>
+            
+            <!-- Container de Classes - Cards Melhorados -->
+            <div class="w-full max-w-2xl mx-auto px-4" style="width: 100%; max-width: 600px; margin-top: 30px;">
+                <div class="text-center mb-6">
                     <h1 class="text-2xl font-bold mb-1">Criar Personagem</h1>
                     <p class="text-sm text-gray-400">Escolha sua classe</p>
                 </div>
                 
-                <div class="space-y-3">
-                    
-                    <!-- Classes Simplificadas (sem emojis grandes, sem animações, sem transições) -->
+                <!-- Grid de Cards de Classe -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <!-- Card: O Hiperfocado -->
                     <button 
-                        onclick="selecionarClasse('O Hiperfocado')"
-                        class="classe-option p-3 rounded-xl border border-blue-500/30 bg-[#121212] text-left"
+                        onclick="window.selecionarClasse('O Hiperfocado')"
+                        class="classe-card classe-option p-4 rounded-xl border-2 border-blue-500/30 bg-gradient-to-br from-blue-900/20 to-blue-800/10 text-left hover:border-blue-500 hover:from-blue-900/30 hover:to-blue-800/20 transition-all"
                         data-classe="O Hiperfocado"
-                        style="transition: none;"
                     >
-                        <div class="font-semibold text-white">O Hiperfocado</div>
-                        <div class="text-xs text-gray-400">+20% XP em Foco</div>
+                        <div class="flex items-center gap-3 mb-2">
+                            <i class="fas fa-bolt text-blue-400 text-2xl"></i>
+                            <div class="font-bold text-white text-lg">O Hiperfocado</div>
+                        </div>
+                        <div class="text-xs text-gray-300 mb-2">+20% XP em Foco</div>
+                        <div class="text-xs text-gray-400">Ideal para quem busca máxima produtividade</div>
                     </button>
                     
+                    <!-- Card: Explorador do Caos -->
                     <button 
-                        onclick="selecionarClasse('Explorador do Caos')"
-                        class="classe-option p-3 rounded-xl border border-green-500/30 bg-[#121212] text-left"
+                        onclick="window.selecionarClasse('Explorador do Caos')"
+                        class="classe-card classe-option p-4 rounded-xl border-2 border-green-500/30 bg-gradient-to-br from-green-900/20 to-green-800/10 text-left hover:border-green-500 hover:from-green-900/30 hover:to-green-800/20 transition-all"
                         data-classe="Explorador do Caos"
-                        style="transition: none;"
                     >
-                        <div class="font-semibold text-white">Explorador do Caos</div>
-                        <div class="text-xs text-gray-400">Bônus aleatórios em Rotina</div>
+                        <div class="flex items-center gap-3 mb-2">
+                            <i class="fas fa-dice text-green-400 text-2xl"></i>
+                            <div class="font-bold text-white text-lg">Explorador do Caos</div>
+                        </div>
+                        <div class="text-xs text-gray-300 mb-2">Bônus aleatórios em Rotina</div>
+                        <div class="text-xs text-gray-400">Para quem gosta de surpresas e variedade</div>
                     </button>
                     
+                    <!-- Card: Sentinela da Ordem -->
                     <button 
-                        onclick="selecionarClasse('Sentinela da Ordem')"
-                        class="classe-option p-3 rounded-xl border border-yellow-500/30 bg-[#121212] text-left"
+                        onclick="window.selecionarClasse('Sentinela da Ordem')"
+                        class="classe-card classe-option p-4 rounded-xl border-2 border-yellow-500/30 bg-gradient-to-br from-yellow-900/20 to-yellow-800/10 text-left hover:border-yellow-500 hover:from-yellow-900/30 hover:to-yellow-800/20 transition-all"
                         data-classe="Sentinela da Ordem"
-                        style="transition: none;"
                     >
-                        <div class="font-semibold text-white">Sentinela da Ordem</div>
-                        <div class="text-xs text-gray-400">2x Cristais com streak</div>
+                        <div class="flex items-center gap-3 mb-2">
+                            <i class="fas fa-shield-alt text-yellow-400 text-2xl"></i>
+                            <div class="font-bold text-white text-lg">Sentinela da Ordem</div>
+                        </div>
+                        <div class="text-xs text-gray-300 mb-2">2x Cristais com streak</div>
+                        <div class="text-xs text-gray-400">Recompensas dobradas por consistência</div>
                     </button>
                     
+                    <!-- Card: O Arquiteto de Fluxos -->
                     <button 
-                        onclick="selecionarClasse('O Arquiteto de Fluxos')"
-                        class="classe-option p-3 rounded-xl border border-purple-500/30 bg-[#121212] text-left"
+                        onclick="window.selecionarClasse('O Arquiteto de Fluxos')"
+                        class="classe-card classe-option p-4 rounded-xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-purple-800/10 text-left hover:border-purple-500 hover:from-purple-900/30 hover:to-purple-800/20 transition-all"
                         data-classe="O Arquiteto de Fluxos"
-                        style="transition: none;"
                     >
-                        <div class="font-semibold text-white">O Arquiteto de Fluxos</div>
-                        <div class="text-xs text-gray-400">Equilibra Ordem e Hiperfoco</div>
+                        <div class="flex items-center gap-3 mb-2">
+                            <i class="fas fa-balance-scale text-purple-400 text-2xl"></i>
+                            <div class="font-bold text-white text-lg">O Arquiteto de Fluxos</div>
+                        </div>
+                        <div class="text-xs text-gray-300 mb-2">Equilibra Ordem e Hiperfoco</div>
+                        <div class="text-xs text-gray-400">O melhor dos dois mundos</div>
                     </button>
-                    
-                    <!-- Botão de Criar -->
-                    <button 
-                        id="createCharacterBtn"
-                        onclick="criarPersonagem()"
-                        disabled
-                        class="w-full bg-indigo-600 disabled:bg-gray-700 disabled:text-gray-300 disabled:cursor-not-allowed text-white px-6 py-4 rounded-xl font-semibold btn-min-height mt-4"
-                        style="transition: none;"
-                    >
-                        Iniciar Jornada
-                    </button>
-                    
-                    <div id="characterCreationMessage" class="hidden text-center text-sm mt-2"></div>
                 </div>
+                
+                <!-- Grid de Atributos -->
+                <div class="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 mb-4">
+                    <h3 class="text-sm font-semibold text-gray-300 mb-3">Atributos Iniciais</h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="text-center">
+                            <div class="text-xs text-gray-400 mb-1">Força</div>
+                            <div class="text-lg font-bold text-white" id="attr-forca">10</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-xs text-gray-400 mb-1">Inteligência</div>
+                            <div class="text-lg font-bold text-white" id="attr-inteligencia">10</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-xs text-gray-400 mb-1">Vitalidade</div>
+                            <div class="text-lg font-bold text-white" id="attr-vitalidade">10</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Barra de Progresso: Poder Total -->
+                <div class="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-semibold text-gray-300">Poder Total</span>
+                        <span class="text-sm font-bold text-indigo-400" id="poder-total">30</span>
+                    </div>
+                    <div class="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
+                        <div 
+                            id="poder-progress-bar" 
+                            class="h-full bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full transition-all duration-500"
+                            style="width: 30%"
+                        ></div>
+                    </div>
+                    <div class="text-xs text-gray-400 mt-1 text-center">Nível 1 - Iniciante</div>
+                </div>
+                
+                <!-- Botão de Criar -->
+                <button 
+                    id="btn-iniciar-jornada"
+                    onclick="window.criarPersonagem()" 
+                    ontouchend="window.criarPersonagem()"
+                    style="position: relative; z-index: 10000; pointer-events: auto !important;"
+                    class="w-full bg-indigo-600 text-white px-6 py-4 rounded-xl font-semibold btn-min-height mt-4 hover:bg-indigo-700 transition-colors"
+                >
+                    <i class="fas fa-rocket mr-2"></i>
+                    Iniciar Jornada
+                </button>
+                
+                <div id="characterCreationMessage" class="hidden text-center text-sm mt-2"></div>
             </div>
         </div>
         
         <!-- App Principal -->
-        <div id="app-container" class="min-h-screen bg-black hidden">
+        <div id="app-container" class="bg-black hidden">
             <!-- Header RPG - Painel Fixo Unificado -->
             <div id="header-rpg" class="sticky top-0 z-[100] bg-black/90 backdrop-blur-md border-b border-gray-900/50">
                 <!-- Informações de Nível, XP, Energia, Cristais -->
@@ -692,6 +853,15 @@
                             </div>
                             <div class="text-xs text-gray-500" id="xpDisplay">0 XP</div>
                         </div>
+                        <!-- Botão de Logoff -->
+                        <button 
+                            onclick="window.fazerLogout()" 
+                            class="flex items-center gap-2 px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 hover:border-red-500/50 rounded-lg text-red-400 hover:text-red-300 text-sm font-medium transition-colors"
+                            title="Sair da conta"
+                        >
+                            <i class="fas fa-sign-out-alt text-xs"></i>
+                            <span class="hidden sm:inline">Sair</span>
+                        </button>
                     </div>
                     <div class="w-full bg-gray-900 rounded-full h-2 mb-2">
                         <div id="xpBar" class="bg-indigo-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
@@ -709,9 +879,9 @@
                 </div>
                 
                 <!-- Barramento de Ícones (Água, Refeições, etc) -->
-                <div class="flex items-center gap-3 px-3 py-2 overflow-x-auto scrollbar-hide border-t border-gray-900/30">
+                <div id="status-icons-container" class="flex items-center gap-3 px-3 py-2 overflow-x-auto scrollbar-hide border-t border-gray-900/30">
                     <!-- Água -->
-                    <button onclick="addWaterInstant()" id="status-water" class="flex-shrink-0 w-[50px] h-[50px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-2xl relative overflow-hidden">
+                    <button onclick="window.addWaterInstant()" id="status-water" class="flex-shrink-0 w-[50px] h-[50px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-2xl relative overflow-hidden">
                         <span>💧</span>
                         <svg class="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 50 50">
                             <circle cx="25" cy="25" r="23" fill="none" stroke="#3b82f6" stroke-width="2" 
@@ -720,56 +890,56 @@
                                     class="transition-all duration-500"
                                     style="stroke-dashoffset: 144.5;"></circle>
                         </svg>
-                        <button onclick="event.stopPropagation(); openWaterSettings();" class="absolute -top-1 -right-1 text-[8px] opacity-0 hover:opacity-100 transition-opacity">⚙️</button>
+                        <button onclick="event.stopPropagation(); window.openWaterSettings();" class="absolute -top-1 -right-1 text-[8px] opacity-0 hover:opacity-100 transition-opacity">⚙️</button>
                     </button>
                     
                     <!-- Café -->
-                    <button onclick="marcarRefeicao('cafe')" id="status-cafe" class="flex-shrink-0 w-[50px] h-[50px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-2xl transition-all">
+                    <button onclick="window.marcarRefeicao('cafe')" id="status-cafe" class="flex-shrink-0 w-[50px] h-[50px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-2xl transition-all">
                         <span>☕</span>
                     </button>
                     
                     <!-- Almoço -->
-                    <button onclick="marcarRefeicao('almoco')" id="status-almoco" class="flex-shrink-0 w-[50px] h-[50px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-2xl transition-all">
+                    <button onclick="window.marcarRefeicao('almoco')" id="status-almoco" class="flex-shrink-0 w-[50px] h-[50px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-2xl transition-all">
                         <span>🍽️</span>
                     </button>
                     
                     <!-- Jantar -->
-                    <button onclick="marcarRefeicao('jantar')" id="status-jantar" class="flex-shrink-0 w-[50px] h-[50px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-2xl transition-all">
+                    <button onclick="window.marcarRefeicao('jantar')" id="status-jantar" class="flex-shrink-0 w-[50px] h-[50px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-2xl transition-all">
                         <span>🍴</span>
                     </button>
                     
                     <!-- Limpeza -->
-                    <button onclick="const modal = document.getElementById('limpezaTimerModal'); if (modal) modal.classList.remove('hidden'); expandFocusTimer();" id="status-limpeza" class="flex-shrink-0 w-[50px] h-[50px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-2xl transition-all">
+                    <button onclick="(function(){const limpezaModal = document.getElementById('limpezaTimerModal'); if (limpezaModal) limpezaModal.classList.remove('hidden'); window.expandFocusTimer();})();" id="status-limpeza" class="flex-shrink-0 w-[50px] h-[50px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-2xl transition-all">
                         <span>⏱️</span>
                     </button>
                     
                     <!-- Movimento -->
-                    <button onclick="const modal = document.getElementById('movimentoTimerModal'); if (modal) modal.classList.remove('hidden');" id="status-movimento" class="flex-shrink-0 w-[50px] h-[50px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-2xl transition-all">
+                    <button onclick="(function(){const movimentoModal = document.getElementById('movimentoTimerModal'); if (movimentoModal) movimentoModal.classList.remove('hidden');})();" id="status-movimento" class="flex-shrink-0 w-[50px] h-[50px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-2xl transition-all">
                         <span>💪</span>
                     </button>
                 </div>
             </div>
             
             <!-- Conteúdo Principal -->
-            <main class="pb-20">
+            <main>
                 <!-- Páginas -->
                 <div id="dashboard-page" class="hidden px-3 py-3 space-y-3 pt-4">
                     <h2 class="text-base font-bold mb-2">🏰 Dashboard</h2>
                     
-                    <!-- Widgets Fixos (Água, Movimento, Limpeza) -->
-                    <div class="flex gap-2 justify-center mb-3">
+                    <!-- Widgets Fixos (Água, Movimento, Limpeza) - Maximizados no Dashboard -->
+                    <div class="flex gap-3 justify-center mb-3">
                         <!-- Água -->
-                        <button onclick="const modal = document.getElementById('waterModal'); if (modal) modal.classList.remove('hidden');" id="status-agua" class="flex-shrink-0 w-[50px] h-[50px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-2xl transition-all">
+                        <button onclick="(function(){const waterModal = document.getElementById('waterModal'); if (waterModal) waterModal.classList.remove('hidden');})();" id="status-agua-dashboard" class="flex-shrink-0 w-[80px] h-[80px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-4xl transition-all hover:border-blue-500">
                             <span>💧</span>
                         </button>
                         
                         <!-- Limpeza -->
-                        <button onclick="expandFocusTimer(); const modal = document.getElementById('limpezaTimerModal'); if (modal) modal.classList.remove('hidden');" id="status-limpeza" class="flex-shrink-0 w-[50px] h-[50px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-2xl transition-all">
+                        <button onclick="window.expandFocusTimer(); (function(){const limpezaModal2 = document.getElementById('limpezaTimerModal'); if (limpezaModal2) limpezaModal2.classList.remove('hidden');})();" id="status-limpeza-dashboard" class="flex-shrink-0 w-[80px] h-[80px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-4xl transition-all hover:border-yellow-500">
                             <span>⏱️</span>
                         </button>
                         
                         <!-- Movimento -->
-                        <button onclick="const modal = document.getElementById('movimentoTimerModal'); if (modal) modal.classList.remove('hidden');" id="status-movimento" class="flex-shrink-0 w-[50px] h-[50px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-2xl transition-all">
+                        <button onclick="(function(){const movimentoModal2 = document.getElementById('movimentoTimerModal'); if (movimentoModal2) movimentoModal2.classList.remove('hidden');})();" id="status-movimento-dashboard" class="flex-shrink-0 w-[80px] h-[80px] rounded-full bg-[#121212] border-2 border-gray-700 flex items-center justify-center text-4xl transition-all hover:border-green-500">
                             <span>💪</span>
                         </button>
                     </div>
@@ -856,7 +1026,7 @@
                                     <span id="frascoAlquimia" class="text-2xl relative">🧪</span>
                                     <h3 class="text-base font-bold">Alquimia</h3>
                                 </div>
-                                <button onclick="abrirModalMedicamento()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold">
+                                <button onclick="window.abrirModalMedicamento()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold">
                                     + Novo
                                 </button>
                             </div>
@@ -869,60 +1039,113 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Quest de Atividade Física -->
-                    <div id="atividade-fisica-card" class="bg-[#121212] border border-green-500/30 rounded-xl p-3">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="text-2xl">💪</span>
-                            <div class="flex-1">
-                                <h3 class="font-semibold text-sm">Movimentar o Corpo</h3>
-                                <p class="text-xs text-gray-400">30 min</p>
-                            </div>
-                        </div>
-                        <div id="atividade-fisica-timer" class="mb-4 hidden">
-                            <div class="text-center mb-2">
-                                <div id="atividade-timer-display" class="text-3xl font-bold text-green-400">30:00</div>
-                            </div>
-                            <div class="flex gap-2">
-                                <button 
-                                    id="btn-iniciar-atividade"
-                                    onclick="iniciarAtividadeFisica()"
-                                    class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors"
-                                >
-                                    Iniciar
-                                </button>
-                                <button 
-                                    id="btn-pausar-atividade"
-                                    onclick="pausarAtividadeFisica()"
-                                    class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-colors hidden"
-                                >
-                                    Pausar
-                                </button>
-                                <button 
-                                    id="btn-finalizar-atividade"
-                                    onclick="finalizarAtividadeFisica()"
-                                    class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors hidden"
-                                >
-                                    Concluir
-                                </button>
-                            </div>
-                        </div>
-                        <div id="atividade-fisica-inicio" class="text-center">
-                            <button 
-                                onclick="abrirTimerAtividadeFisica()"
-                                class="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors"
-                            >
-                                Iniciar Timer
-                            </button>
-                        </div>
-                    </div>
                 </div>
                 
                 <div id="missions-page" class="hidden page">
-                    <!-- Conteúdo de Quests - Missões variáveis -->
-                    <div class="px-3 py-3 pt-4">
-                        <h2 class="text-base font-bold mb-3">⚔️ Quests</h2>
-                        <div id="missionsContainer"></div>
+                    <div class="px-3 py-2">
+                        <h2 class="text-base font-bold mb-2">⚔️ Missões</h2>
+                        
+                        <!-- Botão temporário para criar missões de teste - REMOVER APÓS TESTAR -->
+                        <button 
+                            onclick="window.criarMissoesTeste()" 
+                            class="mb-3 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                        >
+                            🧪 Criar Missões de Teste
+                        </button>
+                        
+                        <!-- Abas de Navegação -->
+                        <div class="flex gap-2 mb-3 border-b border-gray-800">
+                            <button 
+                                onclick="console.log('🖱️ [HTML] Botão Rotina clicado'); window.trocarAbaMissao('rotina');" 
+                                id="aba-rotina" 
+                                class="px-4 py-2 text-sm font-semibold border-b-2 border-indigo-500 text-indigo-400 transition-colors"
+                            >
+                                📅 Minha Rotina
+                            </button>
+                            <button 
+                                onclick="console.log('🖱️ [HTML] Botão Jornada clicado'); window.trocarAbaMissao('jornada');" 
+                                id="aba-jornada" 
+                                class="px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-400 hover:text-gray-300 transition-colors"
+                            >
+                                🗺️ Jornada
+                            </button>
+                        </div>
+                        
+                        <!-- Conteúdo: Minha Rotina (Diárias - tipo_logica === 'recorrente') -->
+                        <div id="conteudo-rotina" class="space-y-3 mt-0">
+                            <!-- Widget de Beber Água -->
+                            <div id="agua-widget-card" class="bg-[#121212] border border-blue-500/30 rounded-xl p-3">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <span class="text-3xl">💧</span>
+                                    <div class="flex-1">
+                                        <h3 class="font-semibold text-sm mb-1">Beber Água</h3>
+                                        <div class="flex items-center justify-between">
+                                            <span id="agua-progresso-texto" class="text-xs text-gray-400">0 / 2000 ml</span>
+                                            <span id="agua-porcentagem" class="text-xs font-bold text-blue-400">0%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Barra de Progresso -->
+                                <div class="w-full bg-gray-900 rounded-full h-3 mb-3 overflow-hidden">
+                                    <div 
+                                        id="agua-progresso-barra" 
+                                        class="bg-blue-500 h-3 rounded-full transition-all duration-500 flex items-center justify-end pr-1"
+                                        style="width: 0%"
+                                    >
+                                        <span id="agua-progresso-emoji" class="text-xs opacity-0 transition-opacity">💧</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Botões de Ação Rápida -->
+                                <div class="flex gap-2">
+                                    <button 
+                                        onclick="window.adicionarAgua(250)"
+                                        class="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors"
+                                    >
+                                        +250ml
+                                    </button>
+                                    <button 
+                                        onclick="window.adicionarAgua(500)"
+                                        class="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors"
+                                    >
+                                        +500ml
+                                    </button>
+                                    <button 
+                                        onclick="window.openWaterSettings()"
+                                        class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-xs font-semibold transition-colors"
+                                        title="Configurações"
+                                    >
+                                        ⚙️
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-[#121212] border border-gray-800 rounded-2xl p-3">
+                                <h3 class="text-base font-bold mb-2">📅 Missões Diárias</h3>
+                                <div id="rotinaContainer" class="space-y-2">
+                                    <!-- Missões diárias serão inseridas aqui -->
+                                </div>
+                                <div id="rotinaEmpty" class="text-center py-4 text-gray-400 text-sm hidden">
+                                    <div class="text-2xl mb-1">📋</div>
+                                    <p>Nenhuma missão diária cadastrada</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Conteúdo: Jornada (To-do - tipo_logica === 'unica') -->
+                        <div id="conteudo-jornada" class="hidden space-y-3 mt-0">
+                            <div class="bg-[#121212] border border-gray-800 rounded-2xl p-3">
+                                <h3 class="text-base font-bold mb-2">🗺️ Jornada</h3>
+                                <div id="jornadaContainer" class="space-y-2">
+                                    <!-- Missões da jornada serão inseridas aqui -->
+                                </div>
+                                <div id="jornadaEmpty" class="text-center py-4 text-gray-400 text-sm hidden">
+                                    <div class="text-2xl mb-1">🗺️</div>
+                                    <p>Nenhuma missão na jornada</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -946,7 +1169,8 @@
                         </div>
                     </div>
                     
-                    <div id="dashboardLoading" class="text-center py-8 text-gray-400">Carregando...</div>
+                    <!-- REMOVIDO: Div de loading que pode estar bloqueando cliques -->
+                    <!-- <div id="dashboardLoading" class="text-center py-8 text-gray-400">Carregando...</div> -->
                     <div id="dashboardEmpty" class="hidden text-center py-8 text-gray-400">Nenhum dado disponível</div>
                     <div class="chart-card hidden mb-3 bg-[#121212] border border-purple-500/30 rounded-2xl p-3">
                         <h3 class="text-base font-bold mb-3">Energia dos Últimos 7 Dias</h3>
@@ -960,7 +1184,8 @@
                 
                 <!-- Página Alquimia removida - medicamentos agora estão no Dashboard -->
                     
-                    <div id="dashboardLoading" class="text-center py-8 text-gray-400">Carregando...</div>
+                    <!-- REMOVIDO: Div de loading duplicada que pode estar bloqueando cliques -->
+                    <!-- <div id="dashboardLoading" class="text-center py-8 text-gray-400">Carregando...</div> -->
                     <div id="dashboardEmpty" class="hidden text-center py-8 text-gray-400">Nenhum dado disponível</div>
                     <div class="chart-card hidden mb-3 bg-[#121212] border border-purple-500/30 rounded-2xl p-3">
                         <h3 class="text-base font-bold mb-3">Energia dos Últimos 7 Dias</h3>
@@ -1034,7 +1259,7 @@
                     
                     <!-- Botão Registrar Medida Avulsa -->
                     <button 
-                        onclick="registrarMedidaAvulsa()"
+                        onclick="window.registrarMedidaAvulsa()"
                         class="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors"
                     >
                         📏 Registrar Medida Avulsa
@@ -1042,7 +1267,7 @@
                     
                     <!-- Botão Configurações de Notificação -->
                     <button 
-                        onclick="abrirConfigsNotificacao()"
+                        onclick="window.abrirConfigsNotificacao()"
                         class="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
                     >
                         ⚙️ Configurar Horários de Refeições
@@ -1100,7 +1325,7 @@
                             </div>
                             <button 
                                 id="btnRegistrarEvolucao"
-                                onclick="registrarEvolucaoBiometria()"
+                                onclick="window.registrarEvolucaoBiometria()"
                                 class="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors"
                             >
                                 Registrar Evolução
@@ -1110,28 +1335,28 @@
                 </div>
             </main>
             
-            <!-- Bottom Navigation -->
-            <nav class="fixed bottom-0 left-0 right-0 bg-[#121212] border-t border-gray-900 z-30">
+            <!-- Bottom Navigation - FORA DO MAIN PARA NÃO SER AFETADA POR OVERFLOW -->
+            <nav class="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-900 bottom-nav" style="z-index: 999999; pointer-events: auto !important;">
                 <div class="flex items-center justify-around h-16">
-                    <button onclick="window.navigationSystem?.navigateTo('dashboard')" data-page="dashboard" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
+                    <button onclick="window.navigationSystem?.navigateTo('dashboard')" data-page="dashboard" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
                         <span class="text-2xl">🏰</span>
-                        <span class="text-xs">Dashboard</span>
+                        <span class="text-xs font-medium">Dashboard</span>
                     </button>
-                    <button onclick="window.navigationSystem?.navigateTo('missions')" data-page="missions" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
+                    <button onclick="window.navigationSystem?.navigateTo('missions')" data-page="missions" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
                         <span class="text-2xl">⚔️</span>
-                        <span class="text-xs">Missões</span>
+                        <span class="text-xs font-medium">Missões</span>
                     </button>
-                    <button onclick="window.navigationSystem?.navigateTo('inventory')" data-page="inventory" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
+                    <button onclick="window.navigationSystem?.navigateTo('inventory')" data-page="inventory" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
                         <span class="text-2xl">🎒</span>
-                        <span class="text-xs">Inventário</span>
+                        <span class="text-xs font-medium">Inventário</span>
                     </button>
-                    <button onclick="window.navigationSystem?.navigateTo('stats')" data-page="stats" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
+                    <button onclick="window.navigationSystem?.navigateTo('stats')" data-page="stats" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
                         <span class="text-2xl">📊</span>
-                        <span class="text-xs">Estatísticas</span>
+                        <span class="text-xs font-medium">Estatísticas</span>
                     </button>
-                    <button onclick="window.navigationSystem?.navigateTo('profile')" data-page="profile" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
+                    <button onclick="window.navigationSystem?.navigateTo('profile')" data-page="profile" class="nav-icon nav-bottom-btn flex flex-col items-center justify-center gap-1.5 text-gray-200 hover:text-white transition-colors" style="min-width: 28px; min-height: 28px;">
                         <span class="text-2xl">👤</span>
-                        <span class="text-xs">Perfil</span>
+                        <span class="text-xs font-medium">Perfil</span>
                     </button>
                 </div>
             </nav>
@@ -1172,8 +1397,8 @@
                         />
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="salvarConfigsNotificacao()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold btn-min-height">Salvar</button>
-                        <button onclick="fecharConfigsNotificacao()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold btn-min-height">Cancelar</button>
+                        <button onclick="window.salvarConfigsNotificacao()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold btn-min-height">Salvar</button>
+                        <button onclick="window.fecharConfigsNotificacao()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold btn-min-height">Cancelar</button>
                     </div>
                 </div>
             </div>
@@ -1193,8 +1418,8 @@
                         </select>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="saveWaterSettings()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold btn-min-height">Salvar</button>
-                        <button onclick="closeWaterSettings()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold btn-min-height">Cancelar</button>
+                        <button onclick="window.saveWaterSettings()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold btn-min-height">Salvar</button>
+                        <button onclick="window.closeWaterSettings()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold btn-min-height">Cancelar</button>
                     </div>
                 </div>
             </div>
@@ -1225,7 +1450,7 @@
                     </div>
                     <div class="flex gap-2">
                         <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold btn-min-height">Adicionar</button>
-                        <button type="button" onclick="closeAddMissionModal()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold btn-min-height">Cancelar</button>
+                        <button type="button" onclick="window.closeAddMissionModal()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold btn-min-height">Cancelar</button>
                     </div>
                 </form>
             </div>
@@ -1235,7 +1460,7 @@
             <div class="bg-[#121212] border border-gray-800 rounded-2xl p-6 max-w-sm w-full">
                 <h3 class="text-xl font-bold mb-4">Eventos de Hoje</h3>
                 <div id="agendaList" class="space-y-2 mb-4"></div>
-                <button onclick="closeAgendaModal()" class="w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold btn-min-height">Fechar</button>
+                <button onclick="window.closeAgendaModal()" class="w-full bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold btn-min-height">Fechar</button>
             </div>
         </div>
         
@@ -1249,14 +1474,14 @@
                         <div class="text-sm text-gray-400">Tempo restante</div>
                     </div>
                     <div class="flex gap-2">
-                        <button id="btn-iniciar-atividade-modal" onclick="iniciarAtividadeFisica()" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors">Iniciar</button>
-                        <button id="btn-pausar-atividade-modal" onclick="pausarAtividadeFisica()" class="flex-1 px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-colors hidden">Pausar</button>
-                        <button id="btn-resume-atividade-modal" onclick="pausarAtividadeFisica()" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors hidden">Retomar</button>
-                        <button id="btn-finalizar-atividade-modal" onclick="finalizarAtividadeFisica(); document.getElementById('movimentoTimerModal').classList.add('hidden');" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors hidden">Concluir</button>
+                        <button id="btn-iniciar-atividade-modal" onclick="window.iniciarAtividadeFisica()" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors">Iniciar</button>
+                        <button id="btn-pausar-atividade-modal" onclick="window.pausarAtividadeFisica()" class="flex-1 px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-colors hidden">Pausar</button>
+                        <button id="btn-resume-atividade-modal" onclick="window.pausarAtividadeFisica()" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors hidden">Retomar</button>
+                        <button id="btn-finalizar-atividade-modal" onclick="window.finalizarAtividadeFisica(); document.getElementById('movimentoTimerModal').classList.add('hidden');" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors hidden">Concluir</button>
                     </div>
                 </div>
                 <div id="atividade-fisica-inicio-modal" class="text-center">
-                    <button onclick="document.getElementById('atividade-fisica-timer-modal').classList.remove('hidden'); document.getElementById('atividade-fisica-inicio-modal').classList.add('hidden'); iniciarAtividadeFisica();" class="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors">
+                    <button onclick="document.getElementById('atividade-fisica-timer-modal').classList.remove('hidden'); document.getElementById('atividade-fisica-inicio-modal').classList.add('hidden'); window.iniciarAtividadeFisica();" class="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors">
                         Iniciar Timer (30 min)
                     </button>
                 </div>
@@ -1274,12 +1499,12 @@
                         <div class="text-sm text-gray-400">Tempo restante</div>
                     </div>
                     <div class="flex gap-2">
-                        <button id="focusPauseBtn-modal" onclick="pauseFocusTimer()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-3 rounded-lg font-semibold">Pausar</button>
-                        <button id="focusResumeBtn-modal" onclick="startFocusTimer()" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-lg font-semibold hidden">Retomar</button>
-                        <button onclick="finishFocusTimer(); document.getElementById('limpezaTimerModal').classList.add('hidden');" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold">Finalizar</button>
+                        <button id="focusPauseBtn-modal" onclick="window.pauseFocusTimer()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-4 py-3 rounded-lg font-semibold">Pausar</button>
+                        <button id="focusResumeBtn-modal" onclick="window.startFocusTimer()" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-lg font-semibold hidden">Retomar</button>
+                        <button onclick="window.finishFocusTimer(); document.getElementById('limpezaTimerModal').classList.add('hidden');" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold">Finalizar</button>
                     </div>
                 </div>
-                <button onclick="document.getElementById('limpezaTimerModal').classList.add('hidden'); collapseFocusTimer();" class="w-full mt-3 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold">Fechar</button>
+                <button onclick="document.getElementById('limpezaTimerModal').classList.add('hidden'); if (typeof window.collapseFocusTimer === 'function') { window.collapseFocusTimer(); }" class="w-full mt-3 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold">Fechar</button>
             </div>
         </div>
         

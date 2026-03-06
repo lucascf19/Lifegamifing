@@ -6,11 +6,123 @@ import { getSupabaseClient } from './main';
  * Gerencia autenticação com email e senha
  */
 export default function Login({ onLoginSuccess }) {
+  const [mode, setMode] = useState('login'); // 'login' ou 'signup'
   const [email, setEmail] = useState('usuario@app.com');
   const [password, setPassword] = useState('senha123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  /**
+   * Função de cadastro com email e senha
+   */
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('📝 Botão de cadastro clicado');
+    
+    // Validação
+    if (!email || !email.includes('@')) {
+      console.warn('⚠️ E-mail inválido:', email);
+      setError('Por favor, insira um e-mail válido');
+      return;
+    }
+    
+    if (!password || password.length < 6) {
+      console.warn('⚠️ Senha inválida (mínimo 6 caracteres)');
+      setError('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+    
+    // Aguarda um pouco se o Supabase ainda não estiver disponível
+    let client = getSupabaseClient();
+    if (!client) {
+      console.warn('⚠️ Supabase não disponível imediatamente, aguardando...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      client = getSupabaseClient();
+      
+      if (!client) {
+        console.error('❌ Supabase não configurado após delay');
+        setError('Erro: Supabase não está disponível. Tente novamente.');
+        setLoading(false);
+        return;
+      }
+    }
+    
+    setLoading(true);
+    setError('');
+    setSuccess(false);
+    
+    try {
+      console.log('🔄 Tentando criar conta com Supabase...');
+      
+      const { data: signUpData, error: signUpError } = await client.auth.signUp({
+        email: email.trim(),
+        password: password.trim(),
+        options: {
+          emailRedirectTo: window.location.origin + window.location.pathname,
+        }
+      });
+      
+      console.log('📥 Resposta do signUp:', { 
+        hasData: !!signUpData, 
+        hasError: !!signUpError,
+        hasUser: !!signUpData?.user,
+        hasSession: !!signUpData?.session,
+        needsEmailConfirmation: !signUpData?.session && !!signUpData?.user
+      });
+      
+      if (signUpError) {
+        console.error('❌ Erro ao criar conta:', signUpError);
+        throw signUpError;
+      }
+      
+      // Se o signUp criou uma sessão automaticamente (email confirmation desativado)
+      if (signUpData.session) {
+        console.log('%c✅ Conta criada e logado automaticamente!', 'color: #10b981; font-weight: bold;');
+        
+        if (typeof window !== 'undefined') {
+          window.dashboardDataLoaded = true;
+          window.missionsDataLoaded = window.missionsDataLoaded || false;
+        }
+        
+        if (onLoginSuccess) {
+          try {
+            onLoginSuccess();
+          } catch (callbackError) {
+            console.error('❌ Erro no callback onLoginSuccess:', callbackError);
+          }
+        }
+        
+        setSuccess(true);
+        setLoading(false);
+        return;
+      }
+      
+      // Se criou usuário mas precisa confirmar email (fluxo padrão do Supabase)
+      if (signUpData.user && !signUpData.session) {
+        console.log('✅ Conta criada - aguardando confirmação de email');
+        setSuccess(true);
+        setError('');
+        setLoading(false);
+        return;
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro ao criar conta (catch):', error);
+      
+      let errorMessage = 'Erro ao criar conta. Tente novamente.';
+      if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
+        errorMessage = 'Este e-mail já está cadastrado. Tente fazer login.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
+      setLoading(false);
+    }
+  };
 
   /**
    * Função de login com email e senha
@@ -80,130 +192,7 @@ export default function Login({ onLoginSuccess }) {
         console.error('❌ Erro no login:', loginError);
         console.error('Código do erro:', loginError.status || loginError.code);
         console.error('Mensagem do erro:', loginError.message);
-        
-        // Se o usuário não existir, tenta criar
-        if (loginError.message?.includes('Invalid login credentials') || 
-            loginError.message?.includes('User not found')) {
-          console.log('👤 Usuário não encontrado, tentando criar...');
-          
-          // Cria o usuário
-          // IMPORTANTE: Se o Supabase tiver "Confirm Email" ativado, o usuário precisará confirmar o email
-          // Para desenvolvimento, desative "Confirm Email" nas configurações do Supabase (Authentication > Settings)
-          const { data: signUpData, error: signUpError } = await client.auth.signUp({
-            email: email.trim(),
-            password: password.trim(),
-            options: {
-              emailRedirectTo: window.location.origin + window.location.pathname,
-              // Se o email não precisar de confirmação, o usuário já estará logado
-              // Caso contrário, será necessário confirmar o email primeiro
-            }
-          });
-          
-          console.log('📥 Resposta do signUp:', { 
-            hasData: !!signUpData, 
-            hasError: !!signUpError,
-            hasUser: !!signUpData?.user,
-            hasSession: !!signUpData?.session,
-            needsEmailConfirmation: !signUpData?.session && !!signUpData?.user
-          });
-          
-          if (signUpError) {
-            console.error('❌ Erro ao criar usuário:', signUpError);
-            throw signUpError;
-          }
-          
-          // Se o signUp criou uma sessão automaticamente (email confirmation desativado)
-          if (signUpData.session) {
-            console.log('%c✅ Usuário criado e logado automaticamente!', 'color: #10b981; font-weight: bold;');
-            
-            // LOGIN SILENCIOSO: Apenas log e callback, sem window.verificarAutenticacao
-            console.log('LOGIN_OK');
-            
-            // Define variáveis globais para evitar tela preta de carregamento infinito
-            if (typeof window !== 'undefined') {
-              window.dashboardDataLoaded = true;
-              window.missionsDataLoaded = window.missionsDataLoaded || false;
-              console.log('✅ Variáveis globais definidas: dashboardDataLoaded = true');
-            }
-            
-            // Chama callback de sucesso
-            if (onLoginSuccess) {
-              try {
-                onLoginSuccess();
-                console.log('✅ Callback onLoginSuccess executado');
-              } catch (callbackError) {
-                console.error('❌ Erro no callback onLoginSuccess:', callbackError);
-              }
-            }
-            
-            setSuccess(true);
-            setLoading(false);
-            return; // Retorna aqui para evitar executar o código abaixo novamente
-          } 
-          // Se criou usuário mas precisa confirmar email
-          else if (signUpData.user && !signUpData.session) {
-            console.warn('⚠️ Usuário criado, mas precisa confirmar email');
-            throw new Error('Por favor, verifique seu email e confirme sua conta antes de fazer login. Se o problema persistir, verifique se "Confirm Email" está desativado no Supabase (Authentication > Settings).');
-          }
-          // Se criou com sucesso mas não tem sessão, tenta fazer login
-          else if (signUpData.user) {
-            console.log('✅ Usuário criado, tentando fazer login...');
-            const { data: loginData, error: loginErrorAfterSignUp } = await client.auth.signInWithPassword({
-              email: email.trim(),
-              password: password.trim()
-            });
-            
-            console.log('📥 Resposta do login após signUp:', { 
-              hasData: !!loginData, 
-              hasError: !!loginErrorAfterSignUp,
-              hasSession: !!loginData?.session
-            });
-            
-            if (loginErrorAfterSignUp) {
-              console.error('❌ Erro ao fazer login após criar usuário:', loginErrorAfterSignUp);
-              throw loginErrorAfterSignUp;
-            }
-            
-            if (!loginData.session) {
-              throw new Error('Login realizado, mas nenhuma sessão foi criada. Verifique as configurações do Supabase.');
-            }
-            
-            console.log('%c✅ Usuário criado e logado com sucesso!', 'color: #10b981; font-weight: bold;');
-            
-            // LOGIN SILENCIOSO: Apenas log e callback, sem window.verificarAutenticacao
-            console.log('🟢 [Login.jsx] LOGIN_OK - SignUp + Login manual');
-            console.log('📋 [Login.jsx] Dados:', { hasUser: !!loginData?.user, hasSession: !!loginData?.session });
-            
-            // Define variáveis globais para evitar tela preta de carregamento infinito
-            if (typeof window !== 'undefined') {
-              window.dashboardDataLoaded = true;
-              window.missionsDataLoaded = window.missionsDataLoaded || false;
-              console.log('✅ [Login.jsx] Variáveis globais definidas');
-            }
-            
-            // Chama callback de sucesso
-            if (onLoginSuccess) {
-              try {
-                console.log('🔄 [Login.jsx] Chamando onLoginSuccess (signUp+login)...');
-                onLoginSuccess();
-                console.log('✅ [Login.jsx] onLoginSuccess executado');
-              } catch (callbackError) {
-                console.error('❌ [Login.jsx] Erro no callback:', callbackError);
-              }
-            } else {
-              console.error('❌ [Login.jsx] onLoginSuccess não definido!');
-            }
-            
-            setSuccess(true);
-            setLoading(false);
-            console.log('✅ [Login.jsx] Estado atualizado: success=true, loading=false');
-            return; // Retorna aqui para evitar executar o código abaixo novamente
-          }
-        } else {
-          // Outros erros (401, 500, etc)
-          console.error('❌ Erro de autenticação:', loginError.status || loginError.code, loginError.message);
-          throw loginError;
-        }
+        throw loginError;
       } else {
         console.log('%c✅ Login realizado com sucesso!', 'color: #10b981; font-weight: bold;');
         console.log('📊 Dados da sessão:', { 
@@ -283,17 +272,27 @@ export default function Login({ onLoginSuccess }) {
    */
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
-      handleLogin(e);
+      if (mode === 'login') {
+        handleLogin(e);
+      } else {
+        handleSignUp(e);
+      }
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex items-center justify-center p-4 overflow-y-auto" style={{ zIndex: 9999 }}>
-      <div className="w-full max-w-md" style={{ position: 'relative', zIndex: 10000 }}>
+    <div className="fixed inset-0 bg-black z-50 flex items-center justify-center p-4 overflow-y-auto" style={{ zIndex: 99999, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+      <div className="w-full max-w-md" style={{ position: 'relative', zIndex: 100000 }}>
         <div className="text-center mb-8">
           <div className="text-6xl mb-4">🎮</div>
-          <h1 className="text-3xl font-bold mb-2">Bem-vindo!</h1>
-          <p className="text-gray-400">Entre com seu e-mail para começar</p>
+          <h1 className="text-3xl font-bold mb-2">
+            {mode === 'login' ? 'Bem-vindo!' : 'Criar Conta'}
+          </h1>
+          <p className="text-gray-400">
+            {mode === 'login' 
+              ? 'Entre com seu e-mail para começar' 
+              : 'Preencha os dados para criar sua conta'}
+          </p>
         </div>
         
         <div className="space-y-4">
@@ -328,15 +327,59 @@ export default function Login({ onLoginSuccess }) {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('🔘 Botão Entrar clicado');
-              handleLogin(e);
+              if (mode === 'login') {
+                console.log('🔘 Botão Entrar clicado');
+                handleLogin(e);
+              } else {
+                console.log('🔘 Botão Criar Conta clicado');
+                handleSignUp(e);
+              }
             }}
             disabled={loading}
             className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-800 disabled:cursor-not-allowed text-white px-6 py-4 rounded-xl font-semibold transition-colors min-h-[48px] relative z-10"
             style={{ pointerEvents: loading ? 'none' : 'auto' }}
           >
-            {loading ? 'Entrando...' : 'Entrar'}
+            {loading 
+              ? (mode === 'login' ? 'Entrando...' : 'Criando...') 
+              : (mode === 'login' ? 'Entrar' : 'Criar Conta')}
           </button>
+          
+          {/* Links de alternância */}
+          <div className="text-center pt-2">
+            {mode === 'login' ? (
+              <p className="text-sm text-gray-400">
+                Não tem uma conta?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('signup');
+                    setError('');
+                    setSuccess(false);
+                  }}
+                  className="text-indigo-400 hover:text-indigo-300 font-semibold underline transition-colors"
+                  disabled={loading}
+                >
+                  Criar conta
+                </button>
+              </p>
+            ) : (
+              <p className="text-sm text-gray-400">
+                Já tem uma conta?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('login');
+                    setError('');
+                    setSuccess(false);
+                  }}
+                  className="text-indigo-400 hover:text-indigo-300 font-semibold underline transition-colors"
+                  disabled={loading}
+                >
+                  Fazer login
+                </button>
+              </p>
+            )}
+          </div>
           
           {error && (
             <div className="text-center text-sm text-red-400">
@@ -347,8 +390,17 @@ export default function Login({ onLoginSuccess }) {
           {success && (
             <div className="text-center">
               <div className="text-green-400 mb-2 text-2xl">✓</div>
-              <p className="text-gray-300 font-medium">Verifique seu e-mail e clique no link para entrar!</p>
-              <p className="text-gray-400 text-xs mt-2">O link expira em 1 hora</p>
+              {mode === 'signup' ? (
+                <>
+                  <p className="text-gray-300 font-medium">Verifique seu e-mail para confirmar o cadastro</p>
+                  <p className="text-gray-400 text-xs mt-2">Enviamos um link de confirmação para {email}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-gray-300 font-medium">Verifique seu e-mail e clique no link para entrar!</p>
+                  <p className="text-gray-400 text-xs mt-2">O link expira em 1 hora</p>
+                </>
+              )}
             </div>
           )}
         </div>

@@ -1,10 +1,13 @@
 {
   "appId": "com.lifegaming.app",
-  "appName": "Gaming Life",
+  "appName": "LifeGaming",
   "webDir": "dist",
   "bundledWebRuntime": false,
-  "server": {
-    "androidScheme": "https",
-    "cleartext": true
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "overlaysWebView": false,
+      "backgroundColor": "#000000"
+    }
   }
 }

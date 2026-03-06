@@ -27,111 +27,91 @@ function App() {
     console.log('[APP.JSX] onLoginSuccess chamado - sessão será atualizada via onAuthStateChange do Supabase');
   }, []);
 
+  // Guard de Autenticação Simplificado
   useEffect(() => {
-    console.log('[APP.JSX] Iniciando guard de autenticação (useEffect)');
-
     const client = getSupabaseClient();
     if (!client) {
-      console.warn('[APP.JSX] Supabase não configurado - forçando Login');
-      setSession(null);
       setInitializing(false);
       return;
     }
 
-    // Usa window.hasActiveSession, definido em main.jsx na inicialização do Supabase,
-    // como ponto de partida para o Guard.
-    if (typeof window !== 'undefined' && window.hasActiveSession === false) {
-      console.log('[APP.JSX] Guard: window.hasActiveSession == false - forçando Login e bloqueando navegação privada');
-      setSession(null);
-      setInitializing(false);
-      return;
-    }
-
-    let isMounted = true;
-
-    const initAuth = async () => {
-      try {
-        const { data, error } = await client.auth.getSession();
-
-        if (!isMounted) return;
-
-        console.log('[APP.JSX] getSession inicial:', {
-          hasSession: !!data?.session,
-          userId: data?.session?.user?.id,
-          email: data?.session?.user?.email,
-          error: error ? error.message : null
-        });
-
-        if (error) {
-          console.error('[APP.JSX] Erro ao obter sessão inicial:', error);
-          setSession(null);
-        } else {
-          setSession(data?.session || null);
-        }
-      } catch (e) {
-        if (!isMounted) return;
-        console.error('[APP.JSX] Exceção em initAuth:', e);
+    // Monitora mudanças na sessão
+    const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
+      console.log('[APP.JSX] Evento Auth:', event, session?.user?.email);
+      
+      // Garante que quando o evento for SIGNED_OUT, a session seja null
+      if (event === 'SIGNED_OUT') {
+        console.log('[APP.JSX] Usuário deslogado, definindo session como null');
         setSession(null);
-      } finally {
-        if (isMounted) {
-          console.log('[APP.JSX] Finalizando estado de inicialização');
-          setInitializing(false);
+        setInitializing(false);
+        return;
+      }
+      
+      setSession(session);
+      setInitializing(false);
+
+      if (session) {
+        // Tenta chamar a verificação global
+        if (typeof window.verificarAutenticacao === 'function') {
+          console.log('[APP.JSX] Usuário logado, verificando personagem...');
+          window.verificarAutenticacao();
+        } else {
+          // Se o script demorar, espera o evento
+          console.log('[APP.JSX] Aguardando script.js carregar...');
+          window.addEventListener('RPG_SCRIPT_READY', () => {
+            console.log('[APP.JSX] Script pronto, verificando personagem...');
+            if (typeof window.verificarAutenticacao === 'function') {
+              window.verificarAutenticacao();
+            }
+          }, { once: true });
         }
       }
-    };
-
-    // Executa inicialização
-    initAuth();
-
-    // Listener de mudanças de autenticação
-    let subscription;
-    try {
-      const { data } = client.auth.onAuthStateChange((event, newSession) => {
-        if (!isMounted) return;
-        console.log('[APP.JSX] Evento Auth:', event, newSession?.user?.email);
-
-        // Evita re-render desnecessário:
-        // se o Supabase só está confirmando que NÃO há sessão,
-        // e isso já foi verificado pelo getSession inicial, ignoramos.
-        if (event === 'INITIAL_SESSION' && !newSession) {
-          return;
-        }
-
-        setSession(newSession || null);
-      });
-      subscription = data?.subscription || data;
-    } catch (listenerError) {
-      console.error('[APP.JSX] Erro ao registrar onAuthStateChange:', listenerError);
-    }
+    });
 
     return () => {
-      isMounted = false;
       if (subscription && typeof subscription.unsubscribe === 'function') {
-        try {
-          subscription.unsubscribe();
-        } catch (unsubscribeError) {
-          console.warn('[APP.JSX] Erro ao desinscrever onAuthStateChange:', unsubscribeError);
-        }
+        subscription.unsubscribe();
       }
     };
   }, []);
 
-  // Quando a sessão ficar válida, dispara a verificação do script.js
+  // Limpeza de UI: garante que o login nativo não interfira na criação
   useEffect(() => {
-    if (!session) return;
+    if (typeof document === 'undefined') return;
 
-    console.log('[APP.JSX] Sessão válida detectada - disparando verificarAutenticacao do script.js');
-    if (typeof window !== 'undefined' && window.verificarAutenticacao) {
-      window.verificarAutenticacao().catch(err => {
-        console.warn('[APP.JSX] Erro ao chamar verificarAutenticacao:', err);
-      });
+    const loginScreen = document.getElementById('loginScreen');
+    const creationScreen = document.getElementById('characterCreationScreen');
+
+    // Se existir sessão ou a tela de criação estiver visível, desabilita interações do login estático
+    if (session || (creationScreen && !creationScreen.classList.contains('hidden'))) {
+      if (loginScreen) {
+        loginScreen.style.display = 'none';
+        loginScreen.style.pointerEvents = 'none';
+      }
     }
   }, [session]);
 
+
+  // Log de debug para entender o estado do Guard antes de decidir o retorno
+  console.log('[DEBUG] Estado atual:', { initializing, session: !!session });
+
   // 1) Estado de carregamento inicial: Splash / tela preta
+  // MODIFICADO: Garantir que não bloqueie cliques quando não estiver ativo
   if (initializing) {
     return (
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ 
+        position: 'fixed', 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        bottom: 0, 
+        backgroundColor: '#000', 
+        zIndex: 9999, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        pointerEvents: 'auto' // Permite cliques apenas quando está ativo
+      }}>
         <div style={{ textAlign: 'center' }}>
           <p style={{ color: '#999' }}>Carregando...</p>
         </div>
@@ -141,21 +121,24 @@ function App() {
 
   // 2) Guard: sem sessão → única rota acessível é Login
   if (!session) {
-    console.log('[APP.JSX] Guard: nenhuma sessão - renderizando Login');
-    return <Login onLoginSuccess={handleLoginSuccess} />;
-  }
-
-  // 3) Sessão válida: expõe containers para o script.js trabalhar
-  if (session) {
-    console.log('[APP.JSX] Sessão ativa - Renderizando containers principais para script.js');
     return (
-      <div id="main-wrapper">
-        {/* O script.js antigo pode procurar por estes IDs para injetar HTML */}
-        <div id="dashboard"></div>
-        <div id="lista-missoes"></div>
-        {/* Adicione aqui outros IDs que o script.js usar como raiz de injeção */}
+      <div
+        id="login-container"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 99999,
+          background: '#000',
+        }}
+      >
+        <Login onLoginSuccess={handleLoginSuccess} />
       </div>
     );
+  }
+
+  // 3) Sessão válida: não renderiza nada do React, deixa o HTML do index.html aparecer
+  if (session) {
+    return null;
   }
 }
 export default App;

@@ -17,18 +17,18 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || ''),
       'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || '')
     },
-    build: {
+  build: {
       // O Capacitor geralmente espera 'dist' ou 'www'
       // Verifique o capacitor.config para confirmar
-      outDir: 'dist',
-      assetsDir: 'assets',
+    outDir: 'dist',
+    assetsDir: 'assets',
       // Gera sourcemaps para debug (pode desativar em produção)
       sourcemap: false,
       // Otimizações para produção
       minify: 'esbuild',
-      rollupOptions: {
-        input: {
-          main: './index.html'
+    rollupOptions: {
+      input: {
+        main: './index.html'
         },
         output: {
           // Garante que os assets usem caminhos relativos

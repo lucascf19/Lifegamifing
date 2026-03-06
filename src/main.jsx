@@ -238,57 +238,57 @@ try {
       console.error('URL recebida:', supabaseUrl.substring(0, 50));
     }
     
-    try {
-      supabaseClient = createClient(supabaseUrl, supabaseKey, {
-        db: {
-          schema: 'public'
-        },
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-          storage: typeof window !== 'undefined' ? window.localStorage : undefined
-        },
-        global: {
-          headers: {
-            'x-client-info': 'app-gamificacao/1.0.0',
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
+  try {
+    supabaseClient = createClient(supabaseUrl, supabaseKey, {
+      db: {
+        schema: 'public'
+      },
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined
+      },
+      global: {
+        headers: {
+          'x-client-info': 'app-gamificacao/1.0.0',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
-      });
+      }
+    });
       // Expõe globalmente IMEDIATAMENTE para o script.js usar
       if (typeof window !== 'undefined') {
-        window.supabaseClient = supabaseClient;
-        // Cria um objeto supabase global para compatibilidade com script.js
-        window.supabase = {
-          createClient: createClient
-        };
+    window.supabaseClient = supabaseClient;
+    // Cria um objeto supabase global para compatibilidade com script.js
+    window.supabase = {
+      createClient: createClient
+    };
       }
-      console.log('✅ Supabase conectado com sucesso!');
+    console.log('✅ Supabase conectado com sucesso!');
       console.log('✅ Supabase disponível globalmente em window.supabaseClient');
-      
-      // Verifica sessão ao carregar - se existir, mantém logado
-      // Isso garante que a sessão seja restaurada mesmo após fechar o app
+    
+    // Verifica sessão ao carregar - se existir, mantém logado
+    // Isso garante que a sessão seja restaurada mesmo após fechar o app
       // Envolvido em try/catch para não travar se houver erro
-      supabaseClient.auth.getSession().then(({ data: { session }, error }) => {
-        if (error) {
-          console.warn('Erro ao verificar sessão:', error);
-          return;
-        }
-        
-        if (session) {
-          console.log('✅ Sessão encontrada, usuário já está logado:', session.user?.email || 'sem email');
-          // A sessão já está ativa, o script.js vai verificar e navegar automaticamente
-          // Marca que há sessão para o script.js não mostrar login
+    supabaseClient.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.warn('Erro ao verificar sessão:', error);
+        return;
+      }
+      
+      if (session) {
+        console.log('✅ Sessão encontrada, usuário já está logado:', session.user?.email || 'sem email');
+        // A sessão já está ativa, o script.js vai verificar e navegar automaticamente
+        // Marca que há sessão para o script.js não mostrar login
           if (typeof window !== 'undefined') {
-            window.hasActiveSession = true;
+        window.hasActiveSession = true;
           }
-        } else {
-          console.log('ℹ️ Nenhuma sessão encontrada, será necessário fazer login');
+      } else {
+        console.log('ℹ️ Nenhuma sessão encontrada, será necessário fazer login');
           if (typeof window !== 'undefined') {
-            window.hasActiveSession = false;
-          }
+        window.hasActiveSession = false;
+      }
         }
       }).catch((sessionError) => {
         console.warn('⚠️ Erro ao verificar sessão (catch):', sessionError);
@@ -492,7 +492,7 @@ if (Capacitor.isNativePlatform()) {
       configurarNotificacoesNativas();
     } catch (error) {
       console.error('❌ Erro ao configurar notificações:', error);
-    }
+  }
   }, 500);
 } else {
   console.log('🌐 Rodando em modo Web: Plugins nativos ignorados');
@@ -502,24 +502,8 @@ if (Capacitor.isNativePlatform()) {
 // Não precisa renderizar novamente aqui
 
 // ============================================
-// CARREGAMENTO DO SCRIPT.JS (EM BACKGROUND)
+// EXPORTAÇÃO DO CLIENTE SUPABASE
 // ============================================
-// Importa a lógica principal da aplicação com tratamento de erro
-// Usa import dinâmico com tratamento de erro seguro
-// Carrega em background, não bloqueia o React
-// IMPORTANTE: React já foi renderizado acima, então o script.js pode falhar sem travar o app
-(async () => {
-  try {
-    // Aguarda um pouco para o React renderizar primeiro
-    await new Promise(resolve => setTimeout(resolve, 100));
-    await import('../script.js');
-    console.log('✅ script.js carregado com sucesso');
-  } catch (error) {
-    console.error('❌ Erro ao carregar script.js:', error);
-    // Não mostra erro na tela - o React já está renderizado
-    // O app continua funcionando, apenas sem algumas funcionalidades do script.js
-  }
-})();
-
-// O HTML já está no index.html, então não precisamos injetar nada
-// A lógica da aplicação será carregada através do script.js
+// O script.js deve ser carregado pelo index.html para garantir que as funções globais existam
+// antes do React tentar chamá-las. Não importamos o script.js aqui.
+// Apenas exportamos o cliente Supabase para uso em outros componentes.
